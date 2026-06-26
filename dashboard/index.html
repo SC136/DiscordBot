@@ -1,0 +1,1329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SC SmartTech — Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Cinematic Painting Tokens ── */
+    :root {
+      --canvas:        #0D1117;
+      --canvas-mid:    #1A2332;
+      --ink:           #F5F0E8;
+      --ink-muted:     rgba(245,240,232,0.65);
+      --ink-dim:       rgba(245,240,232,0.35);
+      --accent:        #E8C87A;
+      --accent-warm:   #D4845A;
+      --accent-deep:   #B8954A;
+      --overlay:       rgba(10,12,18,0.45);
+      --surface-glass: rgba(255,255,255,0.06);
+      --surface-glass-hover: rgba(255,255,255,0.10);
+      --border-glass:  rgba(255,255,255,0.10);
+      --border-glass-strong: rgba(255,255,255,0.18);
+      --success:       #6BCB77;
+      --danger:        #E85D5D;
+    }
+
+    /* ── SVG Noise Filter (inline) ── */
+    .noise-overlay {
+      position: fixed; inset: 0; z-index: 1; pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-repeat: repeat;
+    }
+
+    body {
+      font-family: 'Lora', serif;
+      background: var(--canvas);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Full-bleed Cinematic Background ── */
+    .hero-backdrop {
+      position: fixed; inset: 0; z-index: 0;
+      /* Layered gradients mimicking a classical oil painting's depth and warmth */
+      background:
+        /* Dark vignette frame */
+        radial-gradient(ellipse at center, transparent 30%, rgba(8,8,12,0.85) 100%),
+        /* Warm golden light source — upper right, like candlelight */
+        radial-gradient(ellipse at 75% 15%, rgba(232,200,122,0.12) 0%, transparent 55%),
+        /* Deep blue atmospheric mist — lower left */
+        radial-gradient(ellipse at 20% 85%, rgba(30,50,100,0.18) 0%, transparent 60%),
+        /* Saffron glow — center warmth */
+        radial-gradient(ellipse at 50% 45%, rgba(212,132,90,0.08) 0%, transparent 50%),
+        /* Subtle cool undertone */
+        radial-gradient(ellipse at 30% 30%, rgba(40,60,110,0.12) 0%, transparent 45%),
+        /* Base canvas */
+        linear-gradient(175deg, #0D1117 0%, #111927 30%, #14202E 60%, #0D1117 100%);
+    }
+
+    /* ── App Container ── */
+    .app {
+      position: relative; z-index: 2;
+      max-width: 1100px; margin: 0 auto;
+      padding: 0 8vw;
+    }
+
+    /* ── Fixed Nav ── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.5rem 8vw;
+      transition: background 0.4s ease, backdrop-filter 0.4s ease;
+    }
+    .nav.scrolled {
+      background: rgba(13,17,23,0.75);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border-glass);
+    }
+    .nav-brand {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.5rem; font-weight: 700;
+      letter-spacing: -0.01em;
+      color: var(--ink);
+    }
+    .nav-brand em {
+      font-style: italic; font-weight: 600;
+      color: var(--accent);
+    }
+    .nav-status {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 0.72rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--success);
+    }
+    .nav-status::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px rgba(107,203,119,0.5);
+      animation: statusPulse 2.5s ease-in-out infinite;
+    }
+    @keyframes statusPulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    /* ── Hero / Title Area ── */
+    .hero {
+      min-height: 45vh;
+      display: flex; flex-direction: column;
+      justify-content: flex-end;
+      padding-bottom: 4rem; padding-top: 8rem;
+    }
+    .hero-label {
+      font-family: 'Lora', serif;
+      font-size: 0.7rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.15em;
+      color: var(--accent);
+      margin-bottom: 1rem;
+      opacity: 0; animation: fadeUp 0.7s ease forwards;
+      animation-delay: 0.1s;
+    }
+    .hero h1 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(3rem, 7vw, 5.5rem);
+      font-weight: 700; line-height: 1.05;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.25s;
+    }
+    .hero h1 em {
+      font-style: italic; font-weight: 600;
+      color: var(--accent);
+    }
+    .hero-sub {
+      font-family: 'Lora', serif;
+      font-size: 1.05rem; font-weight: 400;
+      color: var(--ink-muted);
+      margin-top: 1.2rem; max-width: 500px;
+      line-height: 1.65;
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.45s;
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(28px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Stat Cards Grid ── */
+    .stats-section {
+      margin-bottom: 5rem;
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.6s;
+    }
+    .section-label {
+      font-family: 'Lora', serif;
+      font-size: 0.68rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.15em;
+      color: var(--ink-dim);
+      margin-bottom: 1.5rem;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--border-glass), transparent);
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1rem;
+    }
+    .stat-card {
+      background: var(--surface-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      padding: 1.6rem 1.4rem;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.3s ease, background 0.3s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.35);
+      border-color: var(--border-glass-strong);
+      background: var(--surface-glass-hover);
+    }
+    .stat-card-label {
+      font-family: 'Lora', serif;
+      font-size: 0.65rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.12em;
+      color: var(--ink-dim);
+      margin-bottom: 0.8rem;
+    }
+    .stat-card-value {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2.6rem; font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--ink);
+      line-height: 1;
+    }
+    .stat-card-sub {
+      font-size: 0.78rem; color: var(--ink-muted);
+      margin-top: 0.4rem;
+    }
+
+    /* ── Leaderboard Section ── */
+    .leaderboard-section {
+      margin-bottom: 5rem;
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.75s;
+    }
+    .glass-panel {
+      background: var(--surface-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      padding: 2rem;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    /* ── Activity Tracking ── */
+    .activity-section {
+      margin-bottom: 5rem;
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.8s;
+    }
+    .activity-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 1.5rem;
+    }
+    .live-activity-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: var(--surface-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      padding: 0.5rem 0.85rem;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      font-size: 0.82rem;
+      transition: border-color 0.25s ease, background 0.25s ease;
+    }
+    .live-activity-badge:hover {
+      border-color: var(--border-glass-strong);
+      background: var(--surface-glass-hover);
+    }
+    .live-activity-avatar {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid var(--accent);
+      object-fit: cover;
+    }
+    .activity-item-title {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--ink);
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      padding-bottom: 0.5rem;
+      letter-spacing: 0.02em;
+    }
+    .game-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+    }
+    .game-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .game-item-name {
+      font-family: 'Lora', serif;
+      font-size: 0.92rem;
+      font-weight: 500;
+      color: var(--ink);
+    }
+    .game-item-time {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: 1.1rem;
+      color: var(--accent);
+    }
+    .game-progress-track {
+      width: 100%;
+      height: 4px;
+      background: rgba(255,255,255,0.03);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .game-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+      border-radius: 2px;
+      transition: width 1s ease;
+    }
+    .player-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0.25rem 0;
+    }
+    .player-info {
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .player-avatar {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.1);
+      object-fit: cover;
+    }
+    .player-name {
+      font-family: 'Lora', serif;
+      font-size: 0.88rem;
+      color: var(--ink);
+      font-weight: 500;
+    }
+    .player-time {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 600;
+      font-size: 1.05rem;
+      color: var(--accent-warm);
+    }
+    /* ── Analytics Styles ── */
+    .filter-btn {
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent);
+      font-family: 'Lora', serif;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0.45rem 1.25rem;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease, transform 0.2s ease;
+    }
+    .filter-btn:hover, .filter-btn.active {
+      background: var(--accent);
+      color: var(--canvas);
+    }
+    .sub-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--ink-dim);
+      font-family: 'Lora', serif;
+      font-size: 0.82rem;
+      font-weight: 500;
+      padding: 0.35rem 0.5rem;
+      cursor: pointer;
+      position: relative;
+      transition: color 0.25s ease;
+    }
+    .sub-tab-btn:hover {
+      color: var(--ink);
+    }
+    .sub-tab-btn.active {
+      color: var(--accent);
+    }
+    .sub-tab-btn.active::after {
+      content: '';
+      position: absolute;
+      bottom: -0.5rem;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+    .lb-table { width: 100%; border-collapse: collapse; }
+    .lb-table th {
+      font-family: 'Lora', serif;
+      text-align: left; font-size: 0.62rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--ink-dim);
+      padding: 0.6rem 0.8rem;
+      border-bottom: 1px solid var(--border-glass);
+    }
+    .lb-table td {
+      padding: 0.9rem 0.8rem;
+      font-size: 0.9rem;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      color: var(--ink-muted);
+    }
+    .lb-table tbody tr {
+      transition: background 0.2s ease;
+    }
+    .lb-table tbody tr:hover {
+      background: rgba(232,200,122,0.04);
+    }
+    .rank-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 30px; height: 30px; border-radius: 3px;
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700; font-size: 0.9rem;
+    }
+    .rank-1 { background: linear-gradient(135deg, #E8C87A, #B8954A); color: #0D1117; }
+    .rank-2 { background: linear-gradient(135deg, #A0A8B4, #6B7280); color: #0D1117; }
+    .rank-3 { background: linear-gradient(135deg, #D4845A, #A0522D); color: #F5F0E8; }
+    .rank-default { background: rgba(255,255,255,0.05); color: var(--ink-dim); }
+    .lb-user {
+      font-family: 'Lora', serif;
+      font-weight: 500; color: var(--ink);
+    }
+    .lb-level {
+      font-family: 'Cormorant Garamond', serif;
+      font-weight: 700; font-size: 1.1rem;
+      color: var(--accent);
+    }
+    .xp-bar-track {
+      width: 100%; height: 4px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 2px; overflow: hidden;
+    }
+    .xp-bar-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+      transition: width 1s ease;
+    }
+
+    /* ── Config Section ── */
+    .config-section {
+      margin-bottom: 8rem;
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.9s;
+    }
+    .config-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 0.5rem; }
+    .form-group label {
+      font-family: 'Lora', serif;
+      font-size: 0.62rem; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.14em;
+      color: var(--ink-dim);
+    }
+    .form-group input {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-glass);
+      border-radius: 3px;
+      padding: 0.8rem 1rem;
+      color: var(--ink);
+      font-family: 'Lora', serif;
+      font-size: 0.9rem;
+      transition: border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232,200,122,0.12);
+    }
+    .btn-save {
+      grid-column: 1 / -1;
+      padding: 0.85rem 2.5rem;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent);
+      font-family: 'Lora', serif;
+      font-size: 0.8rem; font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease, transform 0.2s ease, box-shadow 0.25s ease;
+      margin-top: 0.75rem;
+    }
+    .btn-save:hover {
+      background: var(--accent);
+      color: var(--canvas);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(232,200,122,0.2);
+    }
+    .btn-save:active { transform: translateY(0); }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 3rem 0;
+      border-top: 1px solid var(--border-glass);
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .footer p {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.9rem; font-style: italic;
+      color: var(--ink-dim);
+    }
+
+    /* ── Toast ── */
+    .toast {
+      position: fixed; bottom: 2.5rem; right: 2.5rem;
+      padding: 0.85rem 1.6rem;
+      border-radius: 3px;
+      font-family: 'Lora', serif;
+      font-size: 0.82rem; font-weight: 500;
+      letter-spacing: 0.02em;
+      color: var(--canvas);
+      opacity: 0; transform: translateY(12px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      pointer-events: none; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { background: var(--success); }
+    .toast.error { background: var(--danger); }
+
+    /* ── Auth Overlay ── */
+    .auth-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--canvas);
+    }
+    /* Painting-like backdrop for auth too */
+    .auth-overlay::before {
+      content: ''; position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse at center, transparent 30%, rgba(8,8,12,0.9) 100%),
+        radial-gradient(ellipse at 60% 30%, rgba(232,200,122,0.08) 0%, transparent 50%),
+        radial-gradient(ellipse at 30% 70%, rgba(30,50,100,0.12) 0%, transparent 50%),
+        linear-gradient(175deg, #0D1117 0%, #111927 50%, #0D1117 100%);
+    }
+    .auth-box {
+      position: relative; z-index: 1;
+      background: var(--surface-glass);
+      border: 1px solid var(--border-glass);
+      border-radius: 4px;
+      padding: 3rem 2.5rem;
+      text-align: center;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      max-width: 380px; width: 90%;
+      opacity: 0; animation: fadeUp 0.8s ease forwards;
+      animation-delay: 0.2s;
+    }
+    .auth-icon {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 2rem; font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 1.2rem;
+    }
+    .auth-box h2 {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.8rem; font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.4rem;
+    }
+    .auth-box p {
+      font-size: 0.85rem; color: var(--ink-muted);
+      margin-bottom: 2rem; line-height: 1.5;
+    }
+    .auth-box input {
+      width: 100%; padding: 0.85rem 1rem;
+      border-radius: 3px;
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border-glass);
+      color: var(--ink);
+      font-family: 'Lora', serif;
+      font-size: 0.9rem; text-align: center;
+      margin-bottom: 1.2rem;
+      transition: border-color 0.25s ease;
+    }
+    .auth-box input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(232,200,122,0.1);
+    }
+    .auth-box button {
+      width: 100%; padding: 0.85rem;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent);
+      font-family: 'Lora', serif;
+      font-size: 0.8rem; font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: background 0.25s ease, color 0.25s ease;
+    }
+    .auth-box button:hover {
+      background: var(--accent);
+      color: var(--canvas);
+    }
+    .hidden { display: none !important; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      .app { padding: 0 6vw; }
+      .nav { padding: 1.2rem 6vw; }
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .activity-grid { grid-template-columns: 1fr; }
+      .analytics-row { grid-template-columns: 1fr !important; }
+      .config-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: clamp(2.2rem, 10vw, 3.5rem); }
+    }
+    @media (max-width: 480px) {
+      .stats-grid { grid-template-columns: 1fr; }
+      .stat-card-value { font-size: 2rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Noise grain overlay -->
+  <div class="noise-overlay"></div>
+
+  <!-- Cinematic painted backdrop -->
+  <div class="hero-backdrop"></div>
+
+  <!-- Auth Overlay -->
+  <div class="auth-overlay" id="authOverlay">
+    <div class="auth-box">
+      <div class="auth-icon">⟡</div>
+      <h2>Command Center</h2>
+      <p>Enter your key to access the dashboard.</p>
+      <input type="password" id="authKeyInput" placeholder="Dashboard Key" autocomplete="off">
+      <button onclick="authenticate()">Enter ↗</button>
+    </div>
+  </div>
+
+  <!-- Main Application -->
+  <div class="app hidden" id="mainApp">
+
+    <!-- Fixed Nav -->
+    <nav class="nav" id="mainNav">
+      <div class="nav-brand">SC <em>SmartTech</em></div>
+      <div class="nav-status">Connected</div>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-label">Bot Dashboard</div>
+      <h1>Command<br><em>Center</em></h1>
+      <p class="hero-sub">Monitor your server, manage configurations, and track your community's growth — all from a single vantage point.</p>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats-section">
+      <div class="section-label">Server Overview</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-card-label">Members</div>
+          <div class="stat-card-value" id="statMembers">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Online</div>
+          <div class="stat-card-value" id="statOnline">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Channels</div>
+          <div class="stat-card-value" id="statChannels">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-label">Uptime</div>
+          <div class="stat-card-value" id="statUptime">—</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Analytics Section -->
+    <section class="analytics-section" id="analyticsSection">
+      <div class="section-label">Server Analytics</div>
+
+      <!-- Time Filter Controls -->
+      <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem; gap: 0.5rem;">
+        <button class="filter-btn active" onclick="changeTimeRange(7, this)">7 Days</button>
+        <button class="filter-btn" onclick="changeTimeRange(14, this)">14 Days</button>
+        <button class="filter-btn" onclick="changeTimeRange(30, this)">30 Days</button>
+      </div>
+
+      <!-- Row 1: Members Growth & Daily Joins/Leaves -->
+      <div class="glass-panel" style="padding: 2rem; margin-bottom: 1.5rem;">
+        <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.4rem; font-weight: 700; margin-bottom: 1rem; color: var(--ink); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <span>Members Growth & Daily Activity</span>
+          <span style="font-size: 0.75rem; font-family: 'Lora', serif; font-weight: 400; color: var(--ink-dim);">Line: Total Members • Bar: Joins vs Leaves</span>
+        </div>
+        <div style="position: relative; height: 320px; width: 100%;">
+          <canvas id="memberChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Row 2: Messages Volume & Rankings -->
+      <div class="analytics-row" style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 1.5rem; margin-bottom: 1.5rem; width: 100%;">
+        <!-- Messages Chart -->
+        <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column;">
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 700; margin-bottom: 1rem; color: var(--ink);">Message Volume</div>
+          <div style="position: relative; height: 260px; width: 100%; flex: 1;">
+            <canvas id="messageChart"></canvas>
+          </div>
+        </div>
+        <!-- Messages Top Rankings -->
+        <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 1.25rem;">
+          <div style="display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
+            <button class="sub-tab-btn active" id="tabChatters" onclick="switchMessagesTab('chatters', this)">Top Chatters</button>
+            <button class="sub-tab-btn" id="tabTextChannels" onclick="switchMessagesTab('textChannels', this)">Top Channels</button>
+          </div>
+          <div id="messagesRankingsBody" style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Rankings load here -->
+            <div style="text-align:center; color:var(--ink-dim); padding:2rem; font-style:italic; font-size:0.85rem;">Awaiting statistics…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Row 3: Voice Volume & Rankings -->
+      <div class="analytics-row" style="display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 1.5rem; margin-bottom: 1.5rem; width: 100%;">
+        <!-- Voice Chart -->
+        <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column;">
+          <div style="font-family: 'Cormorant Garamond', serif; font-size: 1.35rem; font-weight: 700; margin-bottom: 1rem; color: var(--ink);">Voice Call Duration</div>
+          <div style="position: relative; height: 260px; width: 100%; flex: 1;">
+            <canvas id="voiceChart"></canvas>
+          </div>
+        </div>
+        <!-- Voice Top Rankings -->
+        <div class="glass-panel" style="padding: 1.75rem; display: flex; flex-direction: column; gap: 1.25rem;">
+          <div style="display: flex; gap: 1rem; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 0.5rem;">
+            <button class="sub-tab-btn active" id="tabVoiceMembers" onclick="switchVoiceTab('voiceMembers', this)">Top Callers</button>
+            <button class="sub-tab-btn" id="tabVoiceChannels" onclick="switchVoiceTab('voiceChannels', this)">Top Channels</button>
+          </div>
+          <div id="voiceRankingsBody" style="flex: 1; display: flex; flex-direction: column; gap: 0.75rem;">
+            <!-- Rankings load here -->
+            <div style="text-align:center; color:var(--ink-dim); padding:2rem; font-style:italic; font-size:0.85rem;">Awaiting statistics…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Leaderboard -->
+    <section class="leaderboard-section">
+      <div class="section-label">XP Leaderboard</div>
+      <div class="glass-panel">
+        <table class="lb-table">
+          <thead>
+            <tr><th>#</th><th>User</th><th>Level</th><th>XP</th><th>Progress</th></tr>
+          </thead>
+          <tbody id="lbBody">
+            <tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2.5rem;font-style:italic;">Awaiting data…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Activity Tracking -->
+    <section class="activity-section" id="activitySection">
+      <div class="section-label">Activity Insights</div>
+      
+      <!-- Live Server Activity -->
+      <div style="margin-bottom: 1.5rem;">
+        <div style="font-family: 'Lora', serif; font-size: 0.65rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.5rem;">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent); animation: statusPulse 2.5s ease-in-out infinite;"></span>
+          Live Server Activity
+        </div>
+        <div id="liveActivitiesBody" style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="font-family: 'Lora', serif; font-size: 0.85rem; color: var(--ink-dim); font-style: italic; padding: 0.25rem 0;">No active games at the moment.</div>
+        </div>
+      </div>
+
+      <div class="activity-grid">
+        <!-- Popular Games -->
+        <div class="glass-panel" style="padding: 1.75rem;">
+          <div class="activity-item-title">Popular Games & Apps</div>
+          <div id="topGamesBody" style="display: flex; flex-direction: column; gap: 1.1rem;">
+            <div style="text-align:center; color:var(--ink-dim); padding:1.5rem; font-style:italic; font-size: 0.85rem;">Awaiting activity data…</div>
+          </div>
+        </div>
+
+        <!-- Top Active Members -->
+        <div class="glass-panel" style="padding: 1.75rem;">
+          <div class="activity-item-title">Top Active Members</div>
+          <div id="topPlayersBody" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div style="text-align:center; color:var(--ink-dim); padding:1.5rem; font-style:italic; font-size: 0.85rem;">Awaiting activity data…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Config -->
+    <section class="config-section">
+      <div class="section-label">Configuration</div>
+      <div class="glass-panel">
+        <div class="config-grid">
+          <div class="form-group">
+            <label>Prefix</label>
+            <input type="text" id="cfgPrefix" placeholder="sc">
+          </div>
+          <div class="form-group">
+            <label>Embed Color</label>
+            <input type="text" id="cfgColor" placeholder="#0059ff">
+          </div>
+          <button class="btn-save" onclick="saveConfig()">Save Configuration →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>SC SmartTech — the background is the soul.</p>
+    </footer>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ── Nav blur on scroll ──
+    const nav = document.getElementById('mainNav');
+    window.addEventListener('scroll', () => {
+      nav.classList.toggle('scrolled', window.scrollY > 40);
+    }, { passive: true });
+
+    // ── Auth ──
+    let dashKey = '';
+
+    function authenticate() {
+      dashKey = document.getElementById('authKeyInput').value.trim();
+      if (!dashKey) return;
+
+      fetch('/api/stats?key=' + encodeURIComponent(dashKey))
+        .then(r => {
+          if (r.status === 403) throw new Error('Invalid key');
+          return r.json();
+        })
+        .then(() => {
+          document.getElementById('authOverlay').classList.add('hidden');
+          document.getElementById('mainApp').classList.remove('hidden');
+          loadDashboard();
+        })
+        .catch(() => showToast('Invalid dashboard key', 'error'));
+    }
+
+    document.getElementById('authKeyInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') authenticate();
+    });
+
+    // ── Dashboard Data ──
+    function loadDashboard() {
+      fetchStats();
+      fetchLeaderboard();
+      fetchActivity();
+      fetchAnalytics();
+      fetchConfig();
+      setInterval(fetchStats, 30000);
+      setInterval(fetchActivity, 30000);
+      setInterval(fetchAnalytics, 60000);
+    }
+
+    function fetchStats() {
+      fetch('/api/stats?key=' + encodeURIComponent(dashKey))
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('statMembers').textContent = data.memberCount.toLocaleString();
+          document.getElementById('statOnline').textContent = data.onlineCount.toLocaleString();
+          document.getElementById('statChannels').textContent = data.channelCount.toLocaleString();
+          document.getElementById('statUptime').textContent = formatUptime(data.uptimeMs);
+        })
+        .catch(console.error);
+    }
+
+    function fetchLeaderboard() {
+      const tbody = document.getElementById('lbBody');
+      fetch('/api/leaderboard?key=' + encodeURIComponent(dashKey))
+        .then(r => r.json())
+        .then(data => {
+          if (!data.length) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--ink-dim);padding:2.5rem;font-style:italic;">No leveling data yet. Users earn XP by chatting.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = data.map((u, i) => {
+            const rank = i + 1;
+            const rankClass = rank <= 3 ? 'rank-' + rank : 'rank-default';
+            const xpForNext = (u.level + 1) * (u.level + 1) * 100;
+            const progress = Math.min((u.xp / xpForNext) * 100, 100);
+            return '<tr>' +
+              '<td><span class="rank-badge ' + rankClass + '">' + rank + '</span></td>' +
+              '<td class="lb-user">' + escapeHtml(u.username || u.userID) + '</td>' +
+              '<td class="lb-level">' + u.level + '</td>' +
+              '<td>' + u.xp.toLocaleString() + '</td>' +
+              '<td style="min-width:110px;"><div class="xp-bar-track"><div class="xp-bar-fill" style="width:' + progress + '%"></div></div></td>' +
+            '</tr>';
+          }).join('');
+        })
+        .catch(() => {
+          tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--danger);padding:2.5rem;">Failed to load leaderboard.</td></tr>';
+        });
+    }
+
+    function fetchConfig() {
+      fetch('/api/config?key=' + encodeURIComponent(dashKey))
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('cfgPrefix').value = data.prefix || '';
+          document.getElementById('cfgColor').value = data.color || '';
+        })
+        .catch(console.error);
+    }
+
+    function saveConfig() {
+      const prefix = document.getElementById('cfgPrefix').value.trim();
+      const color = document.getElementById('cfgColor').value.trim();
+      if (!prefix) return showToast('Prefix cannot be empty', 'error');
+
+      fetch('/api/config?key=' + encodeURIComponent(dashKey), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prefix: prefix, color: color })
+      })
+        .then(r => {
+          if (!r.ok) throw new Error();
+          return r.json();
+        })
+        .then(() => showToast('Configuration saved', 'success'))
+        .catch(() => showToast('Failed to save', 'error'));
+    }
+
+    function fetchActivity() {
+      const liveBody = document.getElementById('liveActivitiesBody');
+      const gamesBody = document.getElementById('topGamesBody');
+      const playersBody = document.getElementById('topPlayersBody');
+
+      fetch('/api/activity?key=' + encodeURIComponent(dashKey))
+        .then(r => r.json())
+        .then(data => {
+          // 1. Live Activities
+          if (!data.liveActivities || !data.liveActivities.length) {
+            liveBody.innerHTML = '<div style="font-family: \'Lora\', serif; font-size: 0.85rem; color: var(--ink-dim); font-style: italic; padding: 0.25rem 0;">No active games at the moment.</div>';
+          } else {
+            liveBody.innerHTML = data.liveActivities.map(act => {
+              const avatar = act.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png';
+              const durationStr = formatDuration(act.elapsedMs);
+              return '<div class="live-activity-badge">' +
+                '<img class="live-activity-avatar" src="' + avatar + '" alt="" />' +
+                '<span style="color: var(--ink); font-weight: 500; margin-right: 0.15rem;">' + escapeHtml(act.username) + '</span>' +
+                '<span style="color: var(--ink-muted); margin-right: 0.15rem;">playing</span>' +
+                '<span style="color: var(--accent); font-weight: 500; margin-right: 0.25rem;">' + escapeHtml(act.activityName) + '</span>' +
+                '<span style="color: var(--ink-dim); font-style: italic; font-size: 0.72rem;">(' + durationStr + ')</span>' +
+              '</div>';
+            }).join('');
+          }
+
+          // 2. Popular Games
+          if (!data.topGames || !data.topGames.length) {
+            gamesBody.innerHTML = '<div style="text-align:center; color:var(--ink-dim); padding:1.5rem; font-style:italic; font-size: 0.85rem;">No activity data recorded yet.</div>';
+          } else {
+            const maxDuration = Math.max(...data.topGames.map(g => g.hours), 0.1);
+            gamesBody.innerHTML = data.topGames.map(g => {
+              const pct = Math.min((g.hours / maxDuration) * 100, 100);
+              const suffix = g.activeCount > 0 ? ' (' + g.activeCount + ' playing now)' : '';
+              return '<div class="game-item">' +
+                '<div class="game-item-header">' +
+                  '<span class="game-item-name">' + escapeHtml(g.name) + '<span style="color: var(--ink-dim); font-size:0.75rem;">' + suffix + '</span></span>' +
+                  '<span class="game-item-time">' + g.hours.toLocaleString() + ' hrs</span>' +
+                '</div>' +
+                '<div class="game-progress-track">' +
+                  '<div class="game-progress-fill" style="width: ' + pct + '%;"></div>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+          }
+
+          // 3. Top Active Members
+          if (!data.topPlayers || !data.topPlayers.length) {
+            playersBody.innerHTML = '<div style="text-align:center; color:var(--ink-dim); padding:1.5rem; font-style:italic; font-size: 0.85rem;">No active members recorded yet.</div>';
+          } else {
+            playersBody.innerHTML = data.topPlayers.map(p => {
+              const avatar = p.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png';
+              return '<div class="player-row">' +
+                '<div class="player-info">' +
+                  '<img class="player-avatar" src="' + avatar + '" alt="" />' +
+                  '<span class="player-name">' + escapeHtml(p.username) + '</span>' +
+                '</div>' +
+                '<span class="player-time">' + p.hours.toLocaleString() + ' hrs</span>' +
+              '</div>';
+            }).join('');
+          }
+        })
+        .catch(console.error);
+    }
+
+    function formatDuration(ms) {
+      var s = Math.floor(ms / 1000);
+      var h = Math.floor(s / 3600);
+      var m = Math.floor((s % 3600) / 60);
+      if (h > 0) return h + 'h ' + m + 'm';
+      return m + 'm';
+    }
+
+    let currentDays = 7;
+    let analyticsData = null;
+    let activeMessagesTab = 'chatters';
+    let activeVoiceTab = 'voiceMembers';
+
+    let memberChart = null;
+    let messageChart = null;
+    let voiceChart = null;
+
+    function changeTimeRange(days, btn) {
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentDays = days;
+      fetchAnalytics();
+    }
+
+    function switchMessagesTab(tab, btn) {
+      document.querySelectorAll('#tabChatters, #tabTextChannels').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeMessagesTab = tab;
+      renderMessagesRankings();
+    }
+
+    function switchVoiceTab(tab, btn) {
+      document.querySelectorAll('#tabVoiceMembers, #tabVoiceChannels').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      activeVoiceTab = tab;
+      renderVoiceRankings();
+    }
+
+    function fetchAnalytics() {
+      fetch('/api/analytics?days=' + currentDays + '&key=' + encodeURIComponent(dashKey))
+        .then(r => r.json())
+        .then(data => {
+          analyticsData = data;
+          renderCharts();
+          renderMessagesRankings();
+          renderVoiceRankings();
+        })
+        .catch(console.error);
+    }
+
+    function renderCharts() {
+      if (!analyticsData || !analyticsData.dailyStats) return;
+
+      const labels = analyticsData.dailyStats.map(s => formatDateString(s.date));
+      const memberCounts = analyticsData.dailyStats.map(s => s.memberCount);
+      const joins = analyticsData.dailyStats.map(s => s.joins);
+      const leaves = analyticsData.dailyStats.map(s => s.leaves);
+      const messages = analyticsData.dailyStats.map(s => s.messages);
+      const voiceHours = analyticsData.dailyStats.map(s => s.voiceHours);
+
+      // ── 1. Member Chart ──
+      if (memberChart) memberChart.destroy();
+      const ctxMember = document.getElementById('memberChart').getContext('2d');
+      
+      const memberGrad = ctxMember.createLinearGradient(0, 0, 0, 300);
+      memberGrad.addColorStop(0, 'rgba(232, 200, 122, 0.15)');
+      memberGrad.addColorStop(1, 'rgba(232, 200, 122, 0.0)');
+
+      memberChart = new Chart(ctxMember, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              type: 'line',
+              label: 'Total Members',
+              data: memberCounts,
+              borderColor: '#E8C87A',
+              borderWidth: 2,
+              pointBackgroundColor: '#E8C87A',
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.3,
+              fill: true,
+              backgroundColor: memberGrad,
+              yAxisID: 'y'
+            },
+            {
+              type: 'bar',
+              label: 'Joins',
+              data: joins,
+              backgroundColor: 'rgba(107, 203, 119, 0.55)',
+              borderColor: '#6BCB77',
+              borderWidth: 1,
+              borderRadius: 2,
+              yAxisID: 'y1',
+              barPercentage: 0.4
+            },
+            {
+              type: 'bar',
+              label: 'Leaves',
+              data: leaves,
+              backgroundColor: 'rgba(232, 93, 93, 0.55)',
+              borderColor: '#E85D5D',
+              borderWidth: 1,
+              borderRadius: 2,
+              yAxisID: 'y1',
+              barPercentage: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: 'rgba(245,240,232,0.85)', font: { family: "'Lora', serif", size: 11 } }
+            },
+            tooltip: {
+              titleFont: { family: "'Lora', serif" },
+              bodyFont: { family: "'Lora', serif" }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 10 } }
+            },
+            y: {
+              position: 'left',
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 10 } }
+            },
+            y1: {
+              position: 'right',
+              grid: { drawOnChartArea: false },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 10 }, precision: 0 }
+            }
+          }
+        }
+      });
+
+      // ── 2. Message Chart ──
+      if (messageChart) messageChart.destroy();
+      const ctxMessage = document.getElementById('messageChart').getContext('2d');
+      const msgGrad = ctxMessage.createLinearGradient(0, 0, 0, 240);
+      msgGrad.addColorStop(0, '#D4845A');
+      msgGrad.addColorStop(1, 'rgba(212, 132, 90, 0.2)');
+
+      messageChart = new Chart(ctxMessage, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Messages',
+            data: messages,
+            backgroundColor: msgGrad,
+            borderColor: '#D4845A',
+            borderWidth: 1,
+            borderRadius: 3,
+            barPercentage: 0.65
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { titleFont: { family: "'Lora', serif" }, bodyFont: { family: "'Lora', serif" } }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 9 } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 10 } }
+            }
+          }
+        }
+      });
+
+      // ── 3. Voice Chart ──
+      if (voiceChart) voiceChart.destroy();
+      const ctxVoice = document.getElementById('voiceChart').getContext('2d');
+      const voiceGrad = ctxVoice.createLinearGradient(0, 0, 0, 240);
+      voiceGrad.addColorStop(0, '#B8954A');
+      voiceGrad.addColorStop(1, 'rgba(184, 149, 74, 0.2)');
+
+      voiceChart = new Chart(ctxVoice, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Hours in VC',
+            data: voiceHours,
+            backgroundColor: voiceGrad,
+            borderColor: '#B8954A',
+            borderWidth: 1,
+            borderRadius: 3,
+            barPercentage: 0.65
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: { titleFont: { family: "'Lora', serif" }, bodyFont: { family: "'Lora', serif" } }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(255,255,255,0.03)' },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 9 } }
+            },
+            y: {
+              grid: { color: 'rgba(255,255,255,0.05)' },
+              ticks: { color: 'rgba(245,240,232,0.6)', font: { family: "'Lora', serif", size: 10 } }
+            }
+          }
+        }
+      });
+    }
+
+    function renderMessagesRankings() {
+      const container = document.getElementById('messagesRankingsBody');
+      if (!analyticsData) return;
+
+      if (activeMessagesTab === 'chatters') {
+        const data = analyticsData.topChatters || [];
+        if (!data.length) {
+          container.innerHTML = '<div style="text-align:center; color:var(--ink-dim); padding:2rem; font-style:italic; font-size:0.85rem;">No message stats for this period.</div>';
+          return;
+        }
+        container.innerHTML = data.map(u => {
+          const avatar = u.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png';
+          return '<div class="player-row">' +
+            '<div class="player-info">' +
+              '<span style="font-family: \'Cormorant Garamond\', serif; font-size: 0.95rem; font-weight: 700; color: var(--accent); width: 16px;">' + u.rank + '</span>' +
+              '<img class="player-avatar" src="' + avatar + '" alt="" />' +
+              '<span class="player-name">' + escapeHtml(u.username) + '</span>' +
+            '</div>' +
+            '<span style="color: var(--ink); font-family: \'Lora\', serif; font-size: 0.85rem; font-weight: 500;">' + u.messages.toLocaleString() + ' msgs</span>' +
+          '</div>';
+        }).join('');
+      } else {
+        const data = analyticsData.topTextChannels || [];
+        if (!data.length) {
+          container.innerHTML = '<div style="text-align:center; color:var(--ink-dim); padding:2rem; font-style:italic; font-size:0.85rem;">No channel stats for this period.</div>';
+          return;
+        }
+        container.innerHTML = data.map(ch => {
+          return '<div class="player-row">' +
+            '<div class="player-info">' +
+              '<span style="font-family: \'Cormorant Garamond\', serif; font-size: 0.95rem; font-weight: 700; color: var(--accent); width: 16px;">' + ch.rank + '</span>' +
+              '<span class="player-name" style="font-family: \'Lora\', serif; font-weight: 500; color: var(--ink);">' + escapeHtml(ch.name) + '</span>' +
+            '</div>' +
+            '<span style="color: var(--ink-muted); font-family: \'Lora\', serif; font-size: 0.82rem;">' + ch.messages.toLocaleString() + ' msgs</span>' +
+          '</div>';
+        }).join('');
+      }
+    }
+
+    function renderVoiceRankings() {
+      const container = document.getElementById('voiceRankingsBody');
+      if (!analyticsData) return;
+
+      if (activeVoiceTab === 'voiceMembers') {
+        const data = analyticsData.topVoiceMembers || [];
+        if (!data.length) {
+          container.innerHTML = '<div style="text-align:center; color:var(--ink-dim); padding:2rem; font-style:italic; font-size:0.85rem;">No voice call stats for this period.</div>';
+          return;
+        }
+        container.innerHTML = data.map(u => {
+          const avatar = u.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png';
+          return '<div class="player-row">' +
+            '<div class="player-info">' +
+              '<span style="font-family: \'Cormorant Garamond\', serif; font-size: 0.95rem; font-weight: 700; color: var(--accent); width: 16px;">' + u.rank + '</span>' +
+              '<img class="player-avatar" src="' + avatar + '" alt="" />' +
+              '<span class="player-name">' + escapeHtml(u.username) + '</span>' +
+            '</div>' +
+            '<span class="player-time">' + u.hours.toLocaleString() + ' hrs</span>' +
+          '</div>';
+        }).join('');
+      } else {
+        const data = analyticsData.topVoiceChannels || [];
+        if (!data.length) {
+          container.innerHTML = '<div style="text-align:center; color:var(--ink-dim); padding:2rem; font-style:italic; font-size:0.85rem;">No channel stats for this period.</div>';
+          return;
+        }
+        container.innerHTML = data.map(ch => {
+          return '<div class="player-row">' +
+            '<div class="player-info">' +
+              '<span style="font-family: \'Cormorant Garamond\', serif; font-size: 0.95rem; font-weight: 700; color: var(--accent); width: 16px;">' + ch.rank + '</span>' +
+              '<span class="player-name" style="font-family: \'Lora\', serif; font-weight: 500; color: var(--ink);">' + escapeHtml(ch.name) + '</span>' +
+            '</div>' +
+            '<span class="player-time">' + ch.hours.toLocaleString() + ' hrs</span>' +
+          '</div>';
+        }).join('');
+      }
+    }
+
+    function formatDateString(dateStr) {
+      const parts = dateStr.split('-');
+      const d = new Date(Date.UTC(parts[0], parts[1] - 1, parts[2]));
+      const day = d.getUTCDate();
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+      return day + ' ' + monthNames[d.getUTCMonth()];
+    }
+
+    // ── Helpers ──
+    function formatUptime(ms) {
+      var s = Math.floor(ms / 1000);
+      var d = Math.floor(s / 86400);
+      var h = Math.floor((s % 86400) / 3600);
+      var m = Math.floor((s % 3600) / 60);
+      if (d > 0) return d + 'd ' + h + 'h';
+      if (h > 0) return h + 'h ' + m + 'm';
+      return m + 'm';
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function showToast(msg, type) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast ' + type + ' show';
+      setTimeout(function() { t.classList.remove('show'); }, 3000);
+    }
+  </script>
+</body>
+</html>
