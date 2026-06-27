@@ -6,8 +6,13 @@ module.exports = {
   aliases: ['gl'],
   description: 'Search Google and return the top result.',
   run: async (client, message, args) => {
-    let googleKey = "AIzaSyCNt0mzn61pIkbqpXb511AfbMpdayOCViA";
-    let csx = "63e8b9747e8fa7be9"; // Search engine ID.
+    let googleKey = process.env.GOOGLE_KEY;
+    let csx = process.env.GOOGLE_CX;
+
+    if (!googleKey || !csx) {
+      return message.channel.send("❌ *Google API key or Search Engine ID is not configured in environment variables.*");
+    }
+
     let query = args.join(" ");
     let result;
 
