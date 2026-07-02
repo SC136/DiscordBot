@@ -34,6 +34,9 @@
     "ytdl-core": "^4.9.0"
   },
   "overrides": {
-    "mongodb": "^6.0.0"
+    "mongodb": "^6.0.0",
+    "discord-xp": {
+      "mongoose": "$mongoose"
+    }
   }
 }
