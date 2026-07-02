@@ -746,6 +746,49 @@ client.on('message', async message => {
     console.error('Error tracking message stats:', err);
   }
 
+  // Reply using Groq AI when the bot is mentioned (without a command prefix)
+  if (message.mentions.has(client.user) && !message.content.startsWith(prefix)) {
+    const cleanContent = message.content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '').trim();
+    
+    message.channel.startTyping();
+
+    try {
+      const request = require("node-superfetch");
+      const { body } = await request
+        .post("https://api.groq.com/openai/v1/chat/completions")
+        .set("Authorization", `Bearer ${process.env.GROQ}`)
+        .set("Content-Type", "application/json")
+        .send({
+          model: "llama-3.3-70b-versatile",
+          messages: [
+            {
+              role: "system",
+              content: `You are the official SC SmartTech Discord Bot. You are helpful, witty, engaging, and friendly.
+              - The user talking to you is "${message.author.username}" (mention: <@${message.author.id}>).
+              - The bot's command prefix in this server is "${prefix}".
+              - Keep your response conversational, concise (strictly under 3 sentences), and suitable for a Discord chat message.
+              - If the user asks for help, commands, or configuration, tell them to use \`${prefix}help\`.
+              - Do not use markdown headers (like # or ##).`
+            },
+            {
+              role: "user",
+              content: cleanContent || "Hello!"
+            }
+          ]
+        });
+
+      message.channel.stopTyping();
+      const reply = body.choices && body.choices[0] && body.choices[0].message.content;
+      if (reply) {
+        return message.channel.send(reply);
+      }
+    } catch (err) {
+      message.channel.stopTyping();
+      console.error("Groq API Error:", err);
+      return message.channel.send(`👋 Hello <@${message.author.id}>! My prefix in this server is \`${prefix}\`.\n(My AI brain is a bit tired right now, but you can type \`${prefix}help\` to see what I can do!)`);
+    }
+  }
+
   if (!message.content.startsWith(prefix)) return;
   if (!message.member)
     message.member = await message.guild.fetchMember(message);
@@ -819,7 +862,7 @@ client.on('guildMemberAdd', async member => {
     channel => channel.id === '714858330295631965'
   );
   if (!channel) return;
-  const { createCanvas, loadImage } = require('canvas');
+  const { createCanvas, loadImage } = require('@napi-rs/canvas');
   const canvas = createCanvas(500, 227);
   const ctx = canvas.getContext('2d');
   const target = member.user;

@@ -1,7 +1,5 @@
-const { createCanvas, loadImage, registerFont } = require('canvas');
-registerFont(process.cwd() + '/font/LEMONMILK-BoldItalic.otf', {
-	family: 'Sans-Serif'
-});
+const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
+GlobalFonts.registerFromPath(process.cwd() + '/font/LEMONMILK-BoldItalic.otf', 'Sans-Serif');
 const Levels = require('discord-xp');
 
 module.exports = {

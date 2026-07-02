@@ -1,4 +1,4 @@
-const { createCanvas, loadImage, registerFont } = require('canvas')
+const { createCanvas, loadImage } = require('@napi-rs/canvas')
 //registerFont(process.cwd() + "/font/LEMONMILK-BoldItalic.otf", { family: "Sans Serif" })
 
 module.exports = {
