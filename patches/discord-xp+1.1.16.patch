@@ -1,0 +1,17 @@
+diff --git a/node_modules/discord-xp/index.js b/node_modules/discord-xp/index.js
+index dd5476e..b0e3dbb 100644
+--- a/node_modules/discord-xp/index.js
++++ b/node_modules/discord-xp/index.js
+@@ -11,11 +11,7 @@ class DiscordXp {
+   static async setURL(dbUrl) {
+     if (!dbUrl) throw new TypeError("A database url was not provided.");
+     mongoUrl = dbUrl;
+-    return mongoose.connect(dbUrl, {
+-      useNewUrlParser: true,
+-      useUnifiedTopology: true,
+-      useFindAndModify: false
+-    });
++    return mongoose.connect(dbUrl);
+   }
+ 
+   /**
