@@ -32,5 +32,8 @@
     "request": "^2.88.2",
     "request-promise": "^4.2.6",
     "ytdl-core": "^4.9.0"
+  },
+  "overrides": {
+    "mongodb": "^6.0.0"
   }
 }
