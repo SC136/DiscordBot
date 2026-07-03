@@ -1,4 +1,4 @@
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 const typeColors = {
@@ -28,31 +28,33 @@ module.exports = {
   description: 'Search for a Pokémon and view its detailed information.',
   run: async (client, message, args) => {
     if (!args[0]) {
-      return message.channel.send(
-        new Discord.MessageEmbed()
-          .setDescription("❌ *Please specify a Pokémon name or ID to search.*")
-          .setColor("#E85D5D")
-      );
+      return message.channel.send({
+        embeds: [
+          new EmbedBuilder()
+            .setDescription("❌ *Please specify a Pokémon name or ID to search.*")
+            .setColor("#E85D5D")
+        ]
+      });
     }
 
     const query = args[0].toLowerCase().trim();
 
     try {
-      message.channel.startTyping();
+      message.channel.sendTyping().catch(() => {});
 
       const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${query}`);
       
       if (!res.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Could not find a Pokémon named **"${args[0]}"**.*`)
-            .setColor("#E85D5D")
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Could not find a Pokémon named **"${args[0]}"**.*`)
+              .setColor("#E85D5D")
+          ]
+        });
       }
 
       const pokemon = await res.json();
-      message.channel.stopTyping();
 
       const capitalize = (str) => str.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 
@@ -60,11 +62,13 @@ module.exports = {
       const sprite = officialArtwork || pokemon.sprites.front_default;
 
       if (!sprite) {
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription("❌ *Could not find artwork for this Pokémon!*")
-            .setColor("#E85D5D")
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription("❌ *Could not find artwork for this Pokémon!*")
+              .setColor("#E85D5D")
+          ]
+        });
       }
 
       // Formatting details
@@ -110,21 +114,22 @@ module.exports = {
         .map(([name, val]) => `**${name}:** \`${val}\``)
         .join('\n');
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(displayName)
         .setThumbnail(sprite)
-        .addField("Type(s)", `\`${types}\``, true)
-        .addField("Abilities", `\`${abilities}\``, true)
-        .addField("Height / Weight", `\`${height} / ${weight}\``, true)
-        .addField("Base Stats", `${statsString}\n**Total:** \`${totalStats}\``)
+        .addFields([
+          { name: "Type(s)", value: `\`${types}\``, inline: true },
+          { name: "Abilities", value: `\`${abilities}\``, inline: true },
+          { name: "Height / Weight", value: `\`${height} / ${weight}\``, inline: true },
+          { name: "Base Stats", value: `${statsString}\n**Total:** \`${totalStats}\``, inline: false }
+        ])
         .setColor(embedColor)
-        .setFooter(`Search queries powered by PokeAPI`)
+        .setFooter({ text: `Search queries powered by PokeAPI` })
         .setTimestamp();
 
-      message.channel.send(embed);
+      message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in pokesearch command:", err);
-      message.channel.stopTyping();
       message.channel.send("❌ *An error occurred while fetching Pokémon info!*");
     }
   }

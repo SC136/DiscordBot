@@ -1,4 +1,4 @@
-const Discord = require('discord.js')
+const { EmbedBuilder } = require('discord.js')
 
 module.exports = {
     name: 'uptime',
@@ -10,13 +10,13 @@ module.exports = {
         let minutes = Math.floor(client.uptime / 60000) % 60;
         let seconds = Math.floor(client.uptime / 1000) % 60;
 
-        const embed = new Discord.MessageEmbed()
+        const embed = new EmbedBuilder()
         .setTitle('<:SCSmartTechLogo:793665812493893652> My UpTime :')
         .setDescription('This Is Just That For How Much Time I Was Online Or Up')
-        .addField('<a:7908_Cat_laugh_omega:793734088741748746> UpTime', `\`\`\`${days}d ${hours}h ${minutes}m ${seconds}s\`\`\``)
+        .addFields({ name: '<a:7908_Cat_laugh_omega:793734088741748746> UpTime', value: `\`\`\`${days}d ${hours}h ${minutes}m ${seconds}s\`\`\`` })
         .setColor('#0059FF')
         .setTimestamp()
 
-        message.channel.send(embed);
+        message.channel.send({ embeds: [embed] });
     }
 }

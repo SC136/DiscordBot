@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder, ChannelType } = require("discord.js");
 const moment = require("moment");
 
 module.exports = {
@@ -21,49 +21,64 @@ module.exports = {
       const offlineCount = totalMembers - (onlineCount + idleCount + dndCount);
 
       // Channel counts
-      const textChannels = guild.channels.cache.filter(c => c.type === 'text').size;
-      const voiceChannels = guild.channels.cache.filter(c => c.type === 'voice').size;
-      const categoryChannels = guild.channels.cache.filter(c => c.type === 'category').size;
+      const textChannels = guild.channels.cache.filter(c => c.type === ChannelType.GuildText).size;
+      const voiceChannels = guild.channels.cache.filter(c => c.type === ChannelType.GuildVoice).size;
+      const categoryChannels = guild.channels.cache.filter(c => c.type === ChannelType.GuildCategory).size;
 
       // Guild boost status
       const boostLevel = guild.premiumTier;
       const boostCount = guild.premiumSubscriptionCount;
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`🏰 Server Information — ${guild.name}`)
         .setColor('#5865F2')
-        .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
+        .setThumbnail(guild.iconURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
-        .setFooter("Server Stats | SC SmartTech")
+        .setFooter({ text: "Server Stats | SC SmartTech" })
         
-        .addField('📌 General Info', [
-          `**Name:** ${guild.name}`,
-          `**Server ID:** ${guild.id}`,
-          `**Owner:** <@${guild.ownerID}> (ID: \`${guild.ownerID}\`)`,
-          `**Created On:** ${moment(guild.createdAt).format('MMMM Do YYYY, h:mm a')} (${moment(guild.createdAt).fromNow()})`
-        ].join('\n'))
+        .addFields([
+          {
+            name: '📌 General Info',
+            value: [
+              `**Name:** ${guild.name}`,
+              `**Server ID:** ${guild.id}`,
+              `**Owner:** <@${guild.ownerId}> (ID: \`${guild.ownerId}\`)`,
+              `**Created On:** ${moment(guild.createdAt).format('MMMM Do YYYY, h:mm a')} (${moment(guild.createdAt).fromNow()})`
+            ].join('\n'),
+            inline: false
+          },
+          {
+            name: '👤 Members Breakdown',
+            value: [
+              `**Total Members:** \`${totalMembers.toLocaleString()}\``,
+              `• Humans: \`${humansCount.toLocaleString()}\``,
+              `• Bots: \`${botsCount.toLocaleString()}\``,
+              `**Status:** 🟢 \`${onlineCount}\` | 🟡 \`${idleCount}\` | 🔴 \`${dndCount}\` | ⚫ \`${offlineCount}\``
+            ].join('\n'),
+            inline: true
+          },
+          {
+            name: '📁 Channels & Roles',
+            value: [
+              `**Total Channels:** \`${guild.channels.cache.size}\``,
+              `• Text: \`${textChannels}\``,
+              `• Voice: \`${voiceChannels}\``,
+              `• Categories: \`${categoryChannels}\``,
+              `**Roles Count:** \`${guild.roles.cache.size}\``
+            ].join('\n'),
+            inline: true
+          },
+          {
+            name: '⚡ Boost Status',
+            value: [
+              `**Boost Level:** Tier \`${boostLevel}\``,
+              `**Boost Count:** \`${boostCount || 0}\` boosts`
+            ].join('\n'),
+            inline: false
+          }
+        ]);
 
-        .addField('👤 Members Breakdown', [
-          `**Total Members:** \`${totalMembers.toLocaleString()}\``,
-          `• Humans: \`${humansCount.toLocaleString()}\``,
-          `• Bots: \`${botsCount.toLocaleString()}\``,
-          `**Status:** 🟢 \`${onlineCount}\` | 🟡 \`${idleCount}\` | 🔴 \`${dndCount}\` | ⚫ \`${offlineCount}\``
-        ].join('\n'), true)
-
-        .addField('📁 Channels & Roles', [
-          `**Total Channels:** \`${guild.channels.cache.size}\``,
-          `• Text: \`${textChannels}\``,
-          `• Voice: \`${voiceChannels}\``,
-          `• Categories: \`${categoryChannels}\``,
-          `**Roles Count:** \`${guild.roles.cache.size}\``
-        ].join('\n'), true)
-
-        .addField('⚡ Boost Status', [
-          `**Boost Level:** Tier \`${boostLevel}\``,
-          `**Boost Count:** \`${boostCount || 0}\` boosts`
-        ].join('\n'), false);
-
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in serverinfo command:", err);
       return message.channel.send(`❌ *An error occurred while fetching server info: ${err.message}*`);

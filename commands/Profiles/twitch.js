@@ -1,4 +1,4 @@
-const Discord = require('discord.js')
+const { EmbedBuilder } = require('discord.js')
 const fetch = require('node-fetch')
 
 async function twitchUserInfo(username, callback) {
@@ -36,12 +36,15 @@ module.exports = {
         message.channel.send(stats.username)
       })
     } catch (e) {
-      console.log(String(e.stack).bgRed)
-      return message.channel.send(new MessageEmbed()
-        .setColor(color.no)
-        .setTitle(`${color.cross} An error has occurred`)
-        .setDescription(`\`\`\`${e.stack}\`\`\``)
-      );
+      console.log(String(e.stack))
+      return message.channel.send({
+        embeds: [
+          new EmbedBuilder()
+            .setColor('#EF4444')
+            .setTitle(`❌ An error has occurred`)
+            .setDescription(`\`\`\`${e.stack.slice(0, 2000)}\`\`\``)
+        ]
+      });
     }
   }
 }

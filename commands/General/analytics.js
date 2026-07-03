@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const mongoose = require("mongoose");
 
 module.exports = {
@@ -222,24 +222,25 @@ module.exports = {
         tableText += `${dt} | ${msg} | ${voice} | ${jl}\n`;
       });
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`📊 Server Analytics Trend — Past ${days} Days`)
         .setColor('#0059FF')
         .setDescription(`\`\`\`\n${tableText}\`\`\``)
-        .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
+        .setThumbnail(guild.iconURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
-        .setFooter(`Stats for ${guild.name} | SC SmartTech`);
+        .setFooter({ text: `Stats for ${guild.name} | SC SmartTech` });
 
       // Add Top Chatters & Text Channels columns
-      embed.addField('💬 Top Chatters', topChatters.length > 0 ? topChatters.join('\n') : '*No text messages recorded*', true);
-      embed.addField('📁 Top Text Channels', topTextChannels.length > 0 ? topTextChannels.join('\n') : '*No channel data*', true);
-      
-      // Blank line break if needed, then Voice Stats
-      embed.addField('\u200B', '\u200B', false);
-      embed.addField('🔊 Top Voice Members', topVoiceMembers.length > 0 ? topVoiceMembers.join('\n') : '*No voice activity*', true);
-      embed.addField('🎙️ Top Voice Channels', topVoiceChannels.length > 0 ? topVoiceChannels.join('\n') : '*No channel data*', true);
+      embed.addFields([
+        { name: '💬 Top Chatters', value: topChatters.length > 0 ? topChatters.join('\n') : '*No text messages recorded*', inline: true },
+        { name: '📁 Top Text Channels', value: topTextChannels.length > 0 ? topTextChannels.join('\n') : '*No channel data*', inline: true },
+        // Blank line break if needed, then Voice Stats
+        { name: '\u200B', value: '\u200B', inline: false },
+        { name: '🔊 Top Voice Members', value: topVoiceMembers.length > 0 ? topVoiceMembers.join('\n') : '*No voice activity*', inline: true },
+        { name: '🎙️ Top Voice Channels', value: topVoiceChannels.length > 0 ? topVoiceChannels.join('\n') : '*No channel data*', inline: true }
+      ]);
 
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in analytics command:", err);
       return message.channel.send(`❌ *An error occurred while retrieving server analytics: ${err.message}*`);

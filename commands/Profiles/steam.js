@@ -1,4 +1,4 @@
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
@@ -7,44 +7,48 @@ module.exports = {
   description: 'View Steam profile statistics and activity for SC.',
   run: async (client, message, args) => {
     try {
-      message.channel.startTyping();
+      message.channel.sendTyping().catch(() => {});
 
       const STEAM_FN = 'https://vixnfmutdbaprqflgzpr.supabase.co/functions/v1/steam-profile';
       const res = await fetch(STEAM_FN);
       
       if (!res.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription('❌ *Failed to fetch Steam profile statistics.*')
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription('❌ *Failed to fetch Steam profile statistics.*')
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       const data = await res.json();
-      message.channel.stopTyping();
 
       if (data.error) {
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Steam Profile Error: ${data.error}*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Steam Profile Error: ${data.error}*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       const statusDot = data.onlineState === 'online' ? '🟢' : (data.onlineState === 'in-game' ? '🎮' : '⚫');
       const statusColor = data.onlineState === 'online' ? '#57cbde' : (data.onlineState === 'in-game' ? '#97cfa6' : '#95a5a6');
       
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`${statusDot} Steam Profile: ${data.username || 'SC'}`)
         .setColor(statusColor)
         .setThumbnail(data.avatarFull || '')
-        .addField('Status', data.stateMessage || data.onlineState || 'offline', true)
-        .addField('Recent Playtime (2 wks)', data.hoursPlayed2Wk ? `${data.hoursPlayed2Wk}h` : '0h', true)
-        .addField('Member Since', data.memberSince ? data.memberSince.split(',')[0].trim() : '—', true);
+        .addFields([
+          { name: 'Status', value: data.stateMessage || data.onlineState || 'offline', inline: true },
+          { name: 'Recent Playtime (2 wks)', value: data.hoursPlayed2Wk ? `${data.hoursPlayed2Wk}h` : '0h', inline: true },
+          { name: 'Member Since', value: data.memberSince ? data.memberSince.split(',')[0].trim() : '—', inline: true }
+        ]);
 
       if (data.topGame) {
-        embed.addField('Top Played Game', `🎮 **${data.topGame}** (${data.topGameHours || 0} hrs)`, false);
+        embed.addFields({ name: 'Top Played Game', value: `🎮 **${data.topGame}** (${data.topGameHours || 0} hrs)`, inline: false });
         
         // Dynamically wrap/pad the game name for a perfectly aligned ASCII Game Hint Box
         const gameName = data.topGame.length > 20 ? data.topGame.substring(0, 17) + '...' : data.topGame;
@@ -58,14 +62,13 @@ module.exports = {
           `└────────────────────────────────┘\n` +
           `\`\`\``;
 
-        embed.addField('💡 Game Hint', hintBox, false);
+        embed.addFields({ name: '💡 Game Hint', value: hintBox, inline: false });
       }
 
-      message.channel.send(embed);
+      message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error('Error in steam command:', err);
-      message.channel.stopTyping();
       message.channel.send('❌ *An error occurred while fetching the Steam profile!*');
     }
   }

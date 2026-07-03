@@ -1,4 +1,4 @@
-const { MessageEmbed } = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const { readdirSync } = require("fs");
 const prefix = require("../../config.json").prefix;
 
@@ -9,9 +9,9 @@ module.exports = {
   run: async (client, message, args) => {
 
     const roleColor =
-      message.guild.me.displayHexColor === "#000000"
+      message.guild.members.me.displayHexColor === "#000000"
         ? "#ffffff"
-        : message.guild.me.displayHexColor;
+        : message.guild.members.me.displayHexColor;
 
     // ── If a specific command is requested ──
     if (args[0]) {
@@ -22,44 +22,28 @@ module.exports = {
         );
 
       if (!command) {
-        const embed = new MessageEmbed()
+        const embed = new EmbedBuilder()
           .setTitle(`Invalid command! Use \`${prefix} help\` for all of my commands!`)
           .setColor("FF0000");
-        return message.channel.send(embed);
+        return message.channel.send({ embeds: [embed] });
       }
 
-      const embed = new MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle("Command Details:")
-        .addField("PREFIX:", `\`${prefix}\``)
-        .addField(
-          "COMMAND:",
-          command.name ? `\`${command.name}\`` : "No name for this command."
-        )
-        .addField(
-          "ALIASES:",
-          command.aliases
-            ? `\`${command.aliases.join("` `")}\``
-            : "No aliases for this command."
-        )
-        .addField(
-          "USAGE:",
-          command.usage
-            ? `\`${prefix} ${command.name} ${command.usage}\``
-            : `\`${prefix} ${command.name}\``
-        )
-        .addField(
-          "DESCRIPTION:",
-          command.description
-            ? command.description
-            : "No description for this command."
-        )
-        .setFooter(
-          `Requested by ${message.author.tag}`,
-          message.author.displayAvatarURL({ dynamic: true })
-        )
+        .addFields([
+          { name: "PREFIX:", value: `\`${prefix}\`` },
+          { name: "COMMAND:", value: command.name ? `\`${command.name}\`` : "No name for this command." },
+          { name: "ALIASES:", value: command.aliases ? `\`${command.aliases.join("` `")}\`` : "No aliases for this command." },
+          { name: "USAGE:", value: command.usage ? `\`${prefix} ${command.name} ${command.usage}\`` : `\`${prefix} ${command.name}\`` },
+          { name: "DESCRIPTION:", value: command.description ? command.description : "No description for this command." }
+        ])
+        .setFooter({
+          text: `Requested by ${message.author.tag}`,
+          iconURL: message.author.displayAvatarURL({ forceStatic: false })
+        })
         .setTimestamp()
         .setColor(roleColor);
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     }
 
     // ── Build all commands list ──
@@ -96,18 +80,18 @@ module.exports = {
       descriptionText += cmds.map(cmd => `• \`${prefix}${cmd.name}\` — *${cmd.description}*`).join("\n") + "\n\n";
     }
 
-    const embed = new MessageEmbed()
+    const embed = new EmbedBuilder()
       .setTitle("📬 SC SmartTech — Command List")
       .setColor(roleColor)
       .setDescription(descriptionText.trim())
       .setThumbnail(client.user.displayAvatarURL())
-      .setFooter(
-        `Total Commands: ${allCommands.length}  •  Requested by ${message.author.tag}`,
-        message.author.displayAvatarURL({ dynamic: true })
-      )
+      .setFooter({
+        text: `Total Commands: ${allCommands.length}  •  Requested by ${message.author.tag}`,
+        iconURL: message.author.displayAvatarURL({ forceStatic: false })
+      })
       .setTimestamp();
 
-    return message.channel.send(embed);
+    return message.channel.send({ embeds: [embed] });
   },
 };
 

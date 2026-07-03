@@ -1,4 +1,4 @@
-const { MessageEmbed } = require('discord.js')
+const { EmbedBuilder } = require('discord.js')
 module.exports = {
     name : 'ping',
     category : 'info',
@@ -12,10 +12,10 @@ module.exports = {
 
     run : async(client, message, args) => {
         const msg = await message.channel.send(`🏓 Pinging...`)
-        const embed = new MessageEmbed()
+        const embed = new EmbedBuilder()
             .setTitle('Pong!')
             .setDescription(`WebSocket ping is ${client.ws.ping}MS\nMessage edit ping is ${Math.floor(msg.createdAt - message.createdAt)}MS!`)
-            await message.channel.send(embed)
+            await message.channel.send({ embeds: [embed] })
             msg.delete()
 
     }

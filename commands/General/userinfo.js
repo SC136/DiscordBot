@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder, ActivityType } = require("discord.js");
 const moment = require("moment");
 
 module.exports = {
@@ -27,7 +27,7 @@ module.exports = {
       let activityText = '*None*';
       if (user.presence && user.presence.activities.length > 0) {
         const activities = user.presence.activities.map(act => {
-          if (act.type === 'CUSTOM_STATUS') {
+          if (act.type === ActivityType.Custom) {
             const emojiStr = act.emoji ? `${act.emoji.name} ` : '';
             return `Custom Status: ${emojiStr}*"${act.state || ''}"*`;
           }
@@ -43,33 +43,48 @@ module.exports = {
         
       const rolesDisplay = roles.length > 0 ? roles.join(', ') : 'None';
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`👤 User Information — ${user.tag}`)
         .setColor(member.displayHexColor || '#5865F2')
-        .setThumbnail(user.displayAvatarURL({ dynamic: true, size: 256 }))
+        .setThumbnail(user.displayAvatarURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
-        .setFooter(`ID: ${user.id} | SC SmartTech`)
+        .setFooter({ text: `ID: ${user.id} | SC SmartTech` })
         
-        .addField('📌 User Details', [
-          `**Username:** ${user.username}`,
-          `**Discriminator:** #${user.discriminator}`,
-          `**User ID:** \`${user.id}\``,
-          `**Is Bot:** ${user.bot ? '✅ Yes' : '❌ No'}`
-        ].join('\n'))
+        .addFields([
+          {
+            name: '📌 User Details',
+            value: [
+              `**Username:** ${user.username}`,
+              `**Discriminator:** #${user.discriminator}`,
+              `**User ID:** \`${user.id}\``,
+              `**Is Bot:** ${user.bot ? '✅ Yes' : '❌ No'}`
+            ].join('\n'),
+            inline: false
+          },
+          {
+            name: '🎮 Presence & Activity',
+            value: [
+              `**Status:** ${status}`,
+              `**Current Activity:**\n${activityText}`
+            ].join('\n'),
+            inline: false
+          },
+          {
+            name: '📅 Dates & Timestamps',
+            value: [
+              `**Account Created:** ${moment(user.createdAt).format('MMMM Do YYYY, h:mm a')} (${moment(user.createdAt).fromNow()})`,
+              `**Joined Server:** ${moment(member.joinedAt).format('MMMM Do YYYY, h:mm a')} (${moment(member.joinedAt).fromNow()})`
+            ].join('\n'),
+            inline: false
+          },
+          {
+            name: `🛡️ Roles [${roles.length}]`,
+            value: rolesDisplay,
+            inline: false
+          }
+        ]);
 
-        .addField('🎮 Presence & Activity', [
-          `**Status:** ${status}`,
-          `**Current Activity:**\n${activityText}`
-        ].join('\n'))
-
-        .addField('📅 Dates & Timestamps', [
-          `**Account Created:** ${moment(user.createdAt).format('MMMM Do YYYY, h:mm a')} (${moment(user.createdAt).fromNow()})`,
-          `**Joined Server:** ${moment(member.joinedAt).format('MMMM Do YYYY, h:mm a')} (${moment(member.joinedAt).fromNow()})`
-        ].join('\n'))
-
-        .addField(`🛡️ Roles [${roles.length}]`, rolesDisplay);
-
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in userinfo command:", err);
       return message.channel.send(`❌ *An error occurred while fetching user info: ${err.message}*`);

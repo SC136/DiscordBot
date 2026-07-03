@@ -1,5 +1,5 @@
 const fetch = require("node-superfetch");
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 
 module.exports = {
   name: 'youtube-stats',
@@ -14,7 +14,7 @@ module.exports = {
     }
 
     try {
-      const channelRes = await fetch.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(name)}&key=${process.env.GOOGLE}&maxResults=1&type=channel`);
+      const channelRes = await fetch.get(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(name)}&key=${message.client ? process.env.GOOGLE : process.env.GOOGLE}&maxResults=1&type=channel`);
       
       if (!channelRes || !channelRes.body || !channelRes.body.items || channelRes.body.items.length === 0) {
         return message.channel.send("No channel result found. Try again.");
@@ -30,19 +30,21 @@ module.exports = {
       
       const dataItem = dataRes.body.items[0];
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setColor(0x7289DA)
         .setThumbnail(channelItem.snippet?.thumbnails?.high?.url || '')
         .setTimestamp(new Date())
-        .addField("Channel Name", channelItem.snippet?.channelTitle || "Unknown", true)
-        .addField("Channel Description", channelItem.snippet?.description || "No description", true)
-        .addField("Subscribers Count", parseInt(dataItem.statistics?.subscriberCount || 0).toLocaleString(), true)
-        .addField("Totaal Views", parseInt(dataItem.statistics?.viewCount || 0).toLocaleString(), true)
-        .addField("Total Video(s)", parseInt(dataItem.statistics?.videoCount || 0).toLocaleString(), true)
-        .addField("Date Created", channelItem.snippet?.publishedAt ? new Date(channelItem.snippet.publishedAt).toDateString() : "Unknown", true)
-        .addField("Link", `[${channelItem.snippet?.channelTitle || 'Channel Link'}](https://www.youtube.com/channel/${channelItem.id?.channelId})`, true);
+        .addFields([
+          { name: "Channel Name", value: channelItem.snippet?.channelTitle || "Unknown", inline: true },
+          { name: "Channel Description", value: channelItem.snippet?.description || "No description", inline: true },
+          { name: "Subscribers Count", value: parseInt(dataItem.statistics?.subscriberCount || 0).toLocaleString(), inline: true },
+          { name: "Total Views", value: parseInt(dataItem.statistics?.viewCount || 0).toLocaleString(), inline: true },
+          { name: "Total Video(s)", value: parseInt(dataItem.statistics?.videoCount || 0).toLocaleString(), inline: true },
+          { name: "Date Created", value: channelItem.snippet?.publishedAt ? new Date(channelItem.snippet.publishedAt).toDateString() : "Unknown", inline: true },
+          { name: "Link", value: `[${channelItem.snippet?.channelTitle || 'Channel Link'}](https://www.youtube.com/channel/${channelItem.id?.channelId})`, inline: true }
+        ]);
         
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in youtube-stats command:", err);
       return message.channel.send(`An error occurred: ${err.message}`);

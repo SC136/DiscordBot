@@ -1,4 +1,4 @@
-const { MessageEmbed } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { stripIndents } = require('common-tags');
 
 const playing = new Set();
@@ -30,7 +30,7 @@ module.exports = {
 			const incorrect = [];
 			const display = new Array(word.length).fill('◯');
 			while (word.length !== confirmation.length && points < 6) {
-				const embed = new MessageEmbed()
+				const embed = new EmbedBuilder()
 				.setColor('#FFB9BE')
 				.setTitle('Hangman game')
 				.setDescription(stripIndents`
@@ -44,14 +44,15 @@ module.exports = {
 				 . ┃     ${points > 2 ? '/' : ' '}${points > 1 ? '|' : ''}${points > 3 ? '\\' : ''}
 				 . ┃     ${points > 4 ? '/' : ''}${points > 5 ? '\\' : ''}
 				  =============
-					\`\`\`
+				  \`\`\`
 				`);
-				let m = await message.channel.send(embed);
+				let m = await message.channel.send({ embeds: [embed] });
 				const filter = res => {
 					const choice = res.content.toLowerCase();
 					return res.author.id === message.author.id && !confirmation.includes(choice) && !incorrect.includes(choice);
 				};
-				const guess = await message.channel.awaitMessages(filter, {
+				const guess = await message.channel.awaitMessages({
+					filter,
 					max: 1,
 					time: 30000
 				});

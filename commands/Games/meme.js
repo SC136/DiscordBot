@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const request = require("node-superfetch");
 
 module.exports = {
@@ -14,15 +14,15 @@ module.exports = {
         return message.channel.send("❌ *Failed to fetch a meme from Reddit. Please try again later.*");
       }
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(body.title)
         .setURL(body.postLink)
         .setImage(body.url)
         .setColor('#FF4500') // Reddit OrangeRed color
         .setTimestamp()
-        .setFooter(`👍 ${body.ups.toLocaleString()} upvotes | Subreddit: r/${body.subreddit} | SC SmartTech`);
+        .setFooter({ text: `👍 ${body.ups.toLocaleString()} upvotes | Subreddit: r/${body.subreddit} | SC SmartTech` });
 
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in meme command:", err);
       return message.channel.send(`❌ *An error occurred while fetching the meme: ${err.message}*`);

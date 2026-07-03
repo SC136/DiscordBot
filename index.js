@@ -13,16 +13,28 @@ process.on('uncaughtException', (err, origin) => {
 const {
   Collection,
   Client,
-  MessageEmbed,
-  Application,
-  WebhookClient
+  GatewayIntentBits,
+  Partials,
+  EmbedBuilder,
+  WebhookClient,
+  ChannelType,
+  ActivityType
 } = require('discord.js');
 const fs = require('fs');
 const client = new Client({
-  disableMentions: `all`,
-  partials: ["MESSAGE", "CHANNEL", "REACTION"]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.GuildVoiceStates,
+  ],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
+  allowedMentions: { parse: ['users', 'roles'], repliedUser: false }
 });
-// Discord.Constants.DefaultOptions.ws.properties.$browser = "Discord Android";
 const config = require('./config.json');
 const prefix = config.prefix;
 const token = process.env.TOKEN;
@@ -521,14 +533,14 @@ client.categories = fs.readdirSync('./commands/');
 client.on('ready', () => {
   client.user.setActivity({
     name: 'SC SmartTech',
-    type: 'STREAMING',
+    type: ActivityType.Streaming,
     url: "https://www.twitch.tv/sc_136"
   });
   console.log(`${client.user.username} ✅`);
 });
 
-// Join VC On Ready
-
+// Join VC On Ready (Commented out because v12 join() is unsupported in v14)
+/*
 client.on("ready", async () => {
   const channelId = '708701200928997467';
   const joinvc = client.channels.cache.get(channelId);
@@ -544,6 +556,7 @@ client.on("ready", async () => {
     console.log(`Voice channel ${channelId} not found in cache.`);
   }
 });
+*/
 
 // Activity Tracking Startup Initialization
 client.on('ready', async () => {
@@ -567,7 +580,7 @@ client.on('ready', async () => {
       guild.members.cache.forEach(async (member) => {
         if (member.user.bot) return;
         if (member.presence && member.presence.activities) {
-          const trackable = member.presence.activities.filter(act => act && act.type !== 'CUSTOM' && act.type !== 'CUSTOM_STATUS' && act.name);
+          const trackable = member.presence.activities.filter(act => act && act.type !== ActivityType.Custom && act.name);
           for (const act of trackable) {
             try {
               await ActivityStats.findOneAndUpdate(
@@ -592,7 +605,7 @@ client.on('ready', async () => {
       // Scan voice channels on startup to initialize sessions
       let voiceInitCount = 0;
       guild.channels.cache.forEach(channel => {
-        if (channel.type === 'voice') {
+        if (channel.type === ChannelType.GuildVoice) {
           channel.members.forEach(member => {
             if (member.user.bot) return;
             client.voiceSessions.set(member.id, {
@@ -618,7 +631,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     if (!newPresence || !newPresence.guild) return;
     if (newPresence.guild.id !== config.guild) return;
 
-    const userId = newPresence.userID;
+    const userId = newPresence.userId;
     const user = client.users.cache.get(userId);
     if (user && user.bot) return;
 
@@ -626,7 +639,7 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
     const newActivities = newPresence.activities || [];
     const oldActivities = (oldPresence && oldPresence.activities) || [];
 
-    const isTrackable = (act) => act && act.type !== 'CUSTOM' && act.type !== 'CUSTOM_STATUS' && act.name;
+    const isTrackable = (act) => act && act.type !== ActivityType.Custom && act.name;
 
     const newTrackable = newActivities.filter(isTrackable);
     const oldTrackable = oldActivities.filter(isTrackable);
@@ -686,8 +699,8 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
     const userId = newState.id;
     const guildId = newState.guild.id;
-    const oldChannelId = oldState.channelID;
-    const newChannelId = newState.channelID;
+    const oldChannelId = oldState.channelId;
+    const newChannelId = newState.channelId;
     const now = Date.now();
 
     // User left or switched channels -> complete previous session
@@ -724,7 +737,7 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 
 //Message
 
-client.on('message', async message => {
+client.on('messageCreate', async message => {
   if (message.author.bot) return;
   if (!message.guild || message.guild.id !== config.guild) return;
 
@@ -746,7 +759,7 @@ client.on('message', async message => {
   if (message.mentions.has(client.user) && !message.content.startsWith(prefix)) {
     const cleanContent = message.content.replace(new RegExp(`<@!?${client.user.id}>`, 'g'), '').trim();
     
-    message.channel.startTyping();
+    message.channel.sendTyping().catch(() => {});
 
     try {
       const request = require("node-superfetch");
@@ -773,13 +786,11 @@ client.on('message', async message => {
           ]
         });
 
-      message.channel.stopTyping();
       const reply = body.choices && body.choices[0] && body.choices[0].message.content;
       if (reply) {
         return message.channel.send(reply);
       }
     } catch (err) {
-      message.channel.stopTyping();
       console.error("Groq API Error:", err);
       return message.channel.send(`👋 Hello <@${message.author.id}>! My prefix in this server is \`${prefix}\`.\n(My AI brain is a bit tired right now, but you can type \`${prefix}help\` to see what I can do!)`);
     }
@@ -787,7 +798,7 @@ client.on('message', async message => {
 
   if (!message.content.startsWith(prefix)) return;
   if (!message.member)
-    message.member = await message.guild.fetchMember(message);
+    message.member = await message.guild.members.fetch(message.author.id);
   const args = message.content
     .slice(prefix.length)
     .trim()
@@ -830,7 +841,7 @@ client.on('guildMemberAdd', async member => {
   );
   if (!channel) return;
   const membername = member.user.username;
-  const embed = new MessageEmbed()
+  const embed = new EmbedBuilder()
     .setTitle(
       `<:SCSmartTechLogo:793665812493893652> Welcome ${membername}! To SC SmartTech Official Discord Server!!!`
     )
@@ -841,14 +852,14 @@ client.on('guildMemberAdd', async member => {
     .setImage(
       'https://media.discordapp.net/attachments/779005181760765985/795528671888015430/unknown.png?width=1440&height=460'
     )
-    .addField(
-      `And Now We Have ${member.guild.memberCount} Members!!!`,
-      '<@&595587230698045442> Greet Them In <#594513706055106562>!!!'
-    )
-    .setFooter(`${member.user.tag} Just Joined The Server!!!`)
+    .addFields({
+      name: `And Now We Have ${member.guild.memberCount} Members!!!`,
+      value: '<@&595587230698045442> Greet Them In <#594513706055106562>!!!'
+    })
+    .setFooter({ text: `${member.user.tag} Just Joined The Server!!!` })
     .setColor('#7289DA')
     .setTimestamp();
-  channel.send(`***Hey! ${member}***`, embed);
+  channel.send({ content: `***Hey! ${member}***`, embeds: [embed] });
 });
 
 //Welcome Image
@@ -968,7 +979,7 @@ client.on('guildMemberRemove', async member => {
     channel => channel.id === '693471399540686848'
   );
   if (!channel) return;
-  const hook = new WebhookClient(`885466185301368902`, `XmYGYuvITPpIB3xHcfv7iulqDdZa22PbSSR3bMlfKtrMXsEU7FCFrQ5O-pB_B7wi8vHC`)
+  const hook = new WebhookClient({ id: '885466185301368902', token: 'XmYGYuvITPpIB3xHcfv7iulqDdZa22PbSSR3bMlfKtrMXsEU7FCFrQ5O-pB_B7wi8vHC' })
 
   const userLink = `[${member.user.username}](<https://discord.com/users/${member.user.id}> "${member.user.tag}")`
 
@@ -984,7 +995,7 @@ client.on('guildMemberRemove', member => {
   );
   if (!channel) return;
   const membernamet = member.user.tag;
-  const embed = new MessageEmbed()
+  const embed = new EmbedBuilder()
     .setTitle(
       `<:SCSmartTechLogo:793665812493893652> ${membernamet} Left The Server 🙁`
     )
@@ -994,17 +1005,17 @@ client.on('guildMemberRemove', member => {
     )
     .setColor('#0059FF')
     .setTimestamp();
-  channel.send(embed);
+  channel.send({ embeds: [embed] });
 });
 
 //Mention Reply
 
-client.on('message', async message => {
+client.on('messageCreate', async message => {
   if (message.mentions.users.first()) {
     if (message.mentions.users.first().id === '695352100342857739') {
       message.channel.send(
         `Hello!!! SC SmartTech here!, the guardian , protector of SC SmartTech Discord Server!!! hahahhaa I Rule :-))) <a:Yess:793734238548787230>`
-      ).then(msg => msg.delete({ timeout: 10000 }));
+      ).then(msg => setTimeout(() => msg.delete().catch(() => {}), 10000));
     }
   }
 });
@@ -1064,7 +1075,7 @@ let invites;
 client.on('ready', async () => {
   await wait(2000);
 
-  client.guilds.cache.get(client.guild).fetchInvites().then(inv => {
+  client.guilds.cache.get(client.guild).invites.fetch().then(inv => {
     invites = inv;
   })
 })
@@ -1072,16 +1083,16 @@ client.on('ready', async () => {
 client.on('guildMemberAdd', async (member) => {
   if (member.guild.id !== client.guild) return;
 
-  member.guild.fetchInvites().then(gInvites => {
+  member.guild.invites.fetch().then(gInvites => {
     const invite = gInvites.find((inv) => invites.get(inv.code).uses < inv.uses);
 
     const channel = member.guild.channels.cache.get('793694044521103370');
 
-    channel.send(
-      new MessageEmbed()
-        .setDescription(`${member} Joined, Invited By ${invite.inviter} And The Code Was \`${invite.code}\``)
-        .setColor(client.color)
-    );
+    const embed = new EmbedBuilder()
+      .setDescription(`${member} Joined, Invited By ${invite.inviter} And The Code Was \`${invite.code}\``)
+      .setColor(client.color);
+
+    channel.send({ embeds: [embed] });
   })
 })
 
@@ -1089,7 +1100,7 @@ client.on('guildMemberAdd', async (member) => {
 
 const isInvite = async (guild, code) => {
   return await new Promise((resolve) => {
-    guild.fetchInvites().then((invites) => {
+    guild.invites.fetch().then((invites) => {
       for (const invite of invites) {
         if (code === invite[0]) {
           resolve(true)
@@ -1102,7 +1113,7 @@ const isInvite = async (guild, code) => {
   })
 }
 
-client.on('message', async (message) => {
+client.on('messageCreate', async (message) => {
   if (message.author.id === "594504468931018752") return;
   if (message.author.id === "819778342818414632") return;
   if (message.channel.id === "882472307325534248") return;
@@ -1116,27 +1127,28 @@ client.on('message', async (message) => {
       message.delete();
       message.channel.send('Bruh!!! Dont Advertise Other Discord Server!<:LittlePog:793737159433125889>!')
       const channel = client.channels.cache.get('711888386532573215');
-      channel.send(
-        new MessageEmbed()
-          .setTitle('LOGS : Invite Deleted!!!')
-          .setURL(`https://discord.gg/${code}`)
-          .setAuthor(message.author.tag, message.author.avatarURL())
-          .setDescription(`\`${message.content}\``)
-          .addField('Invite Code :', code)
-          .addField('Channel :', `<#${message.channel.id}>`)
-          .addField('By :', `<@${message.author.id}>`)
-          .setFooter('SC SmartTech', client.user.avatarURL())
-          .setColor(client.color)
-          .setTimestamp()
-      );
+      const embed = new EmbedBuilder()
+        .setTitle('LOGS : Invite Deleted!!!')
+        .setURL(`https://discord.gg/${code}`)
+        .setAuthor({ name: message.author.tag, iconURL: message.author.avatarURL() })
+        .setDescription(`\`${message.content}\``)
+        .addFields([
+          { name: 'Invite Code :', value: code },
+          { name: 'Channel :', value: `<#${message.channel.id}>` },
+          { name: 'By :', value: `<@${message.author.id}>` }
+        ])
+        .setFooter({ text: 'SC SmartTech', iconURL: client.user.avatarURL() })
+        .setColor(client.color)
+        .setTimestamp();
+      channel.send({ embeds: [embed] });
     }
   }
 })
 
-client.on('message', message => {
+client.on('messageCreate', message => {
   const channel = "861169619033522246";
   if (message.author.bot) return // If Bot Messages Then It Will Stop(Not Work)
-  if (message.channel.type === 'dm') return // If Message Is Sent In DMs Then It Will Stop(Not Work)
+  if (!message.guild) return // If Message Is Sent In DMs Then It Will Stop(Not Work)
   if (message.channel.id === channel) {
     if (message.attachments.size > 0) return message.reply('I Cant read Images') // If Images Are Sent
     else {
@@ -1152,85 +1164,90 @@ client.on('message', message => {
 
 client.on("channelCreate", (channel) => {
   const buff = client.channels.cache.get('711888386532573215');
-  buff.send(
-    new MessageEmbed()
-      .setTitle('LOGS : Channel Created!!!')
-      .setURL(`https://discord.com/channels/594513706055106560/${channel.id}`)
-      .addField('Channel Name :', `\`${channel.name}\``)
-      .addField('Channel Type :', `\`${channel.type}\``)
-      .addField('Channel ID :', `\`${channel.id}\``)
-      .addField('Channel :', channel)
-      .setFooter('SC SmartTech', client.user.avatarURL())
-      .setColor(client.color)
-      .setTimestamp()
-  );
+  const embed = new EmbedBuilder()
+    .setTitle('LOGS : Channel Created!!!')
+    .setURL(`https://discord.com/channels/594513706055106560/${channel.id}`)
+    .addFields([
+      { name: 'Channel Name :', value: `\`${channel.name}\`` },
+      { name: 'Channel Type :', value: `\`${ChannelType[channel.type] || channel.type}\`` },
+      { name: 'Channel ID :', value: `\`${channel.id}\`` },
+      { name: 'Channel :', value: channel.toString() }
+    ])
+    .setFooter({ text: 'SC SmartTech', iconURL: client.user.avatarURL() })
+    .setColor(client.color)
+    .setTimestamp();
+  buff.send({ embeds: [embed] });
 });
 
 client.on("channelDelete", (channel) => {
   const buff = client.channels.cache.get('711888386532573215');
-  buff.send(
-    new MessageEmbed()
-      .setTitle('LOGS : Channel Deleted!!!')
-      .addField('Channel Name :', `\`${channel.name}\``)
-      .addField('Channel Type :', `\`${channel.type}\``)
-      .addField('Channel ID :', `\`${channel.id}\``)
-      .addField('Channel :', channel)
-      .setFooter('SC SmartTech', client.user.avatarURL())
-      .setColor(client.color)
-      .setTimestamp()
-  );
+  const embed = new EmbedBuilder()
+    .setTitle('LOGS : Channel Deleted!!!')
+    .addFields([
+      { name: 'Channel Name :', value: `\`${channel.name}\`` },
+      { name: 'Channel Type :', value: `\`${ChannelType[channel.type] || channel.type}\`` },
+      { name: 'Channel ID :', value: `\`${channel.id}\`` },
+      { name: 'Channel :', value: channel.toString() }
+    ])
+    .setFooter({ text: 'SC SmartTech', iconURL: client.user.avatarURL() })
+    .setColor(client.color)
+    .setTimestamp();
+  buff.send({ embeds: [embed] });
 });
 
 client.on("channelUpdate", (oldChannel, newChannel) => {
   const buff = client.channels.cache.get('711888386532573215');
-  buff.send(
-    new MessageEmbed()
-      .setTitle('LOGS : Channel Updated!!!')
-      .setURL(`https://discord.com/channels/594513706055106560/${newChannel.id}`)
-      .addField('Channel Name :', `\`${oldChannel.name}\``)
-      .addField('Updated Channel Name :', `\`${newChannel.name}\``)
-      .addField('Channel Type :', `\`${oldChannel.type}\``)
-      .addField('Update Channel Type :', `\`${newChannel.type}\``)
-      .addField('Channel ID :', `\`${newChannel.id}\``)
-      .addField('Channel Topic :', `\`${oldChannel.topic}\``)
-      .addField('Updated Channel Topic :', `\`${newChannel.topic}\``)
-      .addField('Updated Channel :', newChannel)
-      .setFooter('SC SmartTech', client.user.avatarURL())
-      .setColor(client.color)
-      .setTimestamp()
-  );
+  const embed = new EmbedBuilder()
+    .setTitle('LOGS : Channel Updated!!!')
+    .setURL(`https://discord.com/channels/594513706055106560/${newChannel.id}`)
+    .addFields([
+      { name: 'Channel Name :', value: `\`${oldChannel.name}\`` },
+      { name: 'Updated Channel Name :', value: `\`${newChannel.name}\`` },
+      { name: 'Channel Type :', value: `\`${ChannelType[oldChannel.type] || oldChannel.type}\`` },
+      { name: 'Update Channel Type :', value: `\`${ChannelType[newChannel.type] || newChannel.type}\`` },
+      { name: 'Channel ID :', value: `\`${newChannel.id}\`` },
+      { name: 'Channel Topic :', value: `\`${oldChannel.topic || 'None'}\`` },
+      { name: 'Updated Channel Topic :', value: `\`${newChannel.topic || 'None'}\`` },
+      { name: 'Updated Channel :', value: newChannel.toString() }
+    ])
+    .setFooter({ text: 'SC SmartTech', iconURL: client.user.avatarURL() })
+    .setColor(client.color)
+    .setTimestamp();
+  buff.send({ embeds: [embed] });
 });
 
 client.on("messageDelete", (message) => {
   const buff = client.channels.cache.get('711888386532573215');
-  buff.send(
-    new MessageEmbed()
-      .setTitle('LOGS : Message Deleted!!!')
-      .setDescription(`\`${message.content}\``)
-      .addField('Message Author :', message.author)
-      .addField('Message Channel :', message.channel)
-      .setFooter('SC SmartTech', client.user.avatarURL())
-      .setColor(client.color)
-      .setTimestamp()
-  );
+  const embed = new EmbedBuilder()
+    .setTitle('LOGS : Message Deleted!!!')
+    .setDescription(message.content ? `\`${message.content}\`` : '*No text content*')
+    .addFields([
+      { name: 'Message Author :', value: message.author ? message.author.toString() : 'Unknown' },
+      { name: 'Message Channel :', value: message.channel ? message.channel.toString() : 'Unknown' }
+    ])
+    .setFooter({ text: 'SC SmartTech', iconURL: client.user.avatarURL() })
+    .setColor(client.color)
+    .setTimestamp();
+  buff.send({ embeds: [embed] });
 });
 
 client.on("inviteCreate", (invite) => {
   const buff = client.channels.cache.get('711888386532573215');
-  buff.send(
-    new MessageEmbed()
-      .setTitle('LOGS : Invite Created!!!')
-      .setURL(invite.url)
-      .addField('Invite Channel :', invite.channel)
-      .addField('Invite Code :', `\`${invite.code}\``)
-      .addField('Expires At :', `\`${invite.expiresAt}\``)
-      .addField('Inviter :', invite.inviter)
-      .addField('Invite Max Uses :', `\`${invite.maxUses}\``)
-      .addField('Temporary? :', `\`${invite.temporary}\``)
-      .setFooter('SC SmartTech', client.user.avatarURL())
-      .setColor(client.color)
-      .setTimestamp()
-  );
+  const embed = new EmbedBuilder()
+    .setTitle('LOGS : Invite Created!!!')
+    .setURL(invite.url)
+    .addFields([
+      { name: 'Invite Channel :', value: invite.channel ? invite.channel.toString() : 'Unknown' },
+      { name: 'Invite Code :', value: `\`${invite.code}\`` },
+      { name: 'Expires At :', value: invite.expiresAt ? `\`${invite.expiresAt}\`` : 'Never' },
+      { name: 'Inviter :', value: invite.inviter ? invite.inviter.toString() : 'Unknown' },
+      { name: 'Invite Max Uses :', value: `\`${invite.maxUses}\`` },
+      { name: 'Temporary? :', value: `\`${invite.temporary}\`` }
+    ])
+    .setFooter({ text: 'SC SmartTech', iconURL: client.user.avatarURL() })
+    .setColor(client.color)
+    .setTimestamp();
+  buff.send({ embeds: [embed] });
 });
 
 //Self Roles
@@ -1267,13 +1284,15 @@ client.on('messageReactionAdd', async (reaction, user) => {
     const { roleId, name } = roleMap[emojiName];
     try {
       await member.roles.add(roleId);
-      user.send(
-        new MessageEmbed()
-          .setTitle(`You Have Obtained The Role ***${name}***!!!`)
-          .setDescription('If You Want To Remove It Then Again React To [This](https://discord.com/channels/594513706055106560/711594165078851646/827492861455892500) Message!!!')
-          .setFooter("Note : If You Didn't Get The Role Then DM @SC")
-          .setColor('#0059FF')
-      ).catch(() => {}); // Ignore DM errors
+      user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`You Have Obtained The Role ***${name}***!!!`)
+            .setDescription('If You Want To Remove It Then Again React To [This](https://discord.com/channels/594513706055106560/711594165078851646/827492861455892500) Message!!!')
+            .setFooter({ text: "Note : If You Didn't Get The Role Then DM @SC" })
+            .setColor('#0059FF')
+        ]
+      }).catch(() => {}); // Ignore DM errors
     } catch (err) {
       console.error(`Failed to add role ${name} to ${user.tag}:`, err.message);
     }
@@ -1312,13 +1331,15 @@ client.on('messageReactionRemove', async (reaction, user) => {
     const { roleId, name } = roleMap[emojiName];
     try {
       await member.roles.remove(roleId);
-      user.send(
-        new MessageEmbed()
-          .setTitle(`Your Role ***${name}*** Has Been Removed!!!`)
-          .setDescription('If You Want To Get It Then Again React To [This](https://discord.com/channels/594513706055106560/711594165078851646/827492861455892500) Message!!!')
-          .setFooter("Note : If The Role Was Not Removed Then DM @SC")
-          .setColor('#0059FF')
-      ).catch(() => {}); // Ignore DM errors
+      user.send({
+        embeds: [
+          new EmbedBuilder()
+            .setTitle(`Your Role ***${name}*** Has Been Removed!!!`)
+            .setDescription('If You Want To Get It Then Again React To [This](https://discord.com/channels/594513706055106560/711594165078851646/827492861455892500) Message!!!')
+            .setFooter({ text: "Note : If The Role Was Not Removed Then DM @SC" })
+            .setColor('#0059FF')
+        ]
+      }).catch(() => {}); // Ignore DM errors
     } catch (err) {
       console.error(`Failed to remove role ${name} from ${user.tag}:`, err.message);
     }
@@ -1327,17 +1348,20 @@ client.on('messageReactionRemove', async (reaction, user) => {
 
 //Suggestion System
 
-client.on("message", message => {
+client.on("messageCreate", message => {
   if (message.channel.id !== "873943017327853608") return;
   if (message.author.bot) return;
   if (message.author.id === "594504468931018752") return;
-  const embed = new MessageEmbed()
-    .setAuthor(message.author.tag, message.author.displayAvatarURL({ format: 'png', size: 4096, dynamic: true }))
+  const embed = new EmbedBuilder()
+    .setAuthor({
+      name: message.author.tag,
+      iconURL: message.author.displayAvatarURL({ extension: 'png', size: 4096, forceStatic: false })
+    })
     .setTitle("New Suggestion!")
     .setDescription(message.content)
-    .setFooter("Just Type Your Suggestions In This Channel!")
+    .setFooter({ text: "Just Type Your Suggestions In This Channel!" })
     .setColor("#0059ff");
-  message.channel.send(embed)
+  message.channel.send({ embeds: [embed] })
     .then(m => {
       m.react("<:SCThumbsUp:874376116746469406>")
       m.react("<:SCThumbsDown:874376176821469185>")
@@ -1347,7 +1371,7 @@ client.on("message", message => {
 
 //Messages 
 
-client.on('message', async msg => {
+client.on('messageCreate', async msg => {
   if (msg.content === '<:chickencri:793737149161799691>') {
     msg.react('<:Chickenwtf:793737139275300864>');
   }
@@ -1356,6 +1380,7 @@ client.on('message', async msg => {
     msg.react('<:SCSmartTechLogo:793665812493893652>');
   }
 
+  /* Voice commands are disabled/unsupported in discord.js v14 natively
   if (msg.content === 'broadcast!') {
     const broadcast = client.voice.createBroadcast();
     broadcast.play(ytdl('https://www.youtube.com/watch?v=UoMbwCoJTYM', { filter: 'audioonly' }));
@@ -1393,6 +1418,7 @@ client.on('message', async msg => {
 
     connection.play(BroadCast);
   }
+  */
 
   // if (msg.content === `<@!${client.owner}>`) {
   //   msg.react('🇴');

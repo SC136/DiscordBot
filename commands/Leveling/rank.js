@@ -1,7 +1,6 @@
 const Levels = require('discord-xp')
-const { fetchLeaderboard } = require('discord-xp')
-const Discord = require('discord.js')
-const canvacord = require('canvacord')
+const { EmbedBuilder } = require('discord.js')
+
 module.exports = {
   name: 'level',
   aliases: ['rank', 'xp'],
@@ -19,19 +18,18 @@ module.exports = {
 
     const neededXp = Levels.xpFor(parseInt(user.level) + 1);
 
-    const embed = new Discord.MessageEmbed()
+    const embed = new EmbedBuilder()
       .setTitle('SC SmartTech Rank Command')
       .setThumbnail('https://media.discordapp.net/attachments/779005181760765985/782878022332055559/SC_SmartTech_Logo.png?width=588&height=588')
       .setDescription('> Level/XP System!!!')
-      .addField(`${target.tag}\'s Level :`, `\`\`\`${user.level}\`\`\``)
-      .addField(
-        'Rank :',
-        parseInt(user.position)
-      )
-      .addField('Current XP :', `\`\`\`${user.xp}\`\`\``)
-      .addField('Required XP :', `\`\`\`${neededXp}\`\`\``)
-      .setFooter('TIP : You Can Also View Someone Elses Rank By Doing `sc rank @username` :-)')
+      .addFields([
+        { name: `${target.tag}'s Level :`, value: `\`\`\`${user.level}\`\`\`` },
+        { name: 'Rank :', value: String(parseInt(user.position)) },
+        { name: 'Current XP :', value: `\`\`\`${user.xp}\`\`\`` },
+        { name: 'Required XP :', value: `\`\`\`${neededXp}\`\`\`` }
+      ])
+      .setFooter({ text: 'TIP : You Can Also View Someone Elses Rank By Doing `sc rank @username` :-)' })
       .setColor('#0059FF')
-    message.channel.send(embed); // We show the level.
+    message.channel.send({ embeds: [embed] }); // We show the level.
   }
 }

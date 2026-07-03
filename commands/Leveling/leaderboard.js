@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder } = require("discord.js");
 const Levels = require("discord-xp");
 
 module.exports = {
@@ -18,12 +18,12 @@ module.exports = {
 
       const leaderboard = await Levels.computeLeaderboard(client, rawLeaderboard, true);
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`🏆 Server XP Leaderboard — ${message.guild.name}`)
         .setColor('#FFD700') // Gold color
-        .setThumbnail(message.guild.iconURL({ dynamic: true, size: 256 }))
+        .setThumbnail(message.guild.iconURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
-        .setFooter("XP Leaderboard | SC SmartTech");
+        .setFooter({ text: "XP Leaderboard | SC SmartTech" });
 
       const list = leaderboard.map((entry, index) => {
         let medal = '•';
@@ -37,7 +37,7 @@ module.exports = {
 
       embed.setDescription(list);
 
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in leaderboard command:", err);
       return message.channel.send(`❌ *An error occurred while fetching the leaderboard: ${err.message}*`);

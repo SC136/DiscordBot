@@ -1,4 +1,4 @@
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
     const packageName = args.join(' ') || 'sc136';
 
     try {
-      message.channel.startTyping();
+      message.channel.sendTyping().catch(() => {});
 
       // NPM registry URLs need scoped package names to preserve the '@' but encode the '/'
       // e.g. @types/node -> @types%2Fnode
@@ -25,21 +25,23 @@ module.exports = {
       const metaRes = await fetch(`https://registry.npmjs.org/${urlName}`);
       
       if (metaRes.status === 404) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Could not find NPM package **"${packageName}"**.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Could not find NPM package **"${packageName}"**.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       if (!metaRes.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Failed to fetch package metadata from NPM Registry.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Failed to fetch package metadata from NPM Registry.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       const metaData = await metaRes.json();
@@ -71,25 +73,24 @@ module.exports = {
         ? metaData.keywords.slice(0, 5).map(k => `\`${k}\``).join(', ')
         : '—';
 
-      message.channel.stopTyping();
-
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`📦 NPM Package: ${metaData.name}`)
         .setURL(`https://www.npmjs.com/package/${metaData.name}`)
         .setColor('#CB3837') // NPM Red
         .setDescription(description)
-        .addField('Latest Version', `\`v${latestVersion}\``, true)
-        .addField('Downloads (Last Year)', `\`${downloads}\``, true)
-        .addField('Author', author, true)
-        .addField('Keywords', keywords, false)
-        .setFooter('NPM Registry & Downloads API', 'https://static-production.npmjs.com/58a1b27d4ca92d1bdf69da57af3f0f7c.png')
+        .addFields([
+          { name: 'Latest Version', value: `\`v${latestVersion}\``, inline: true },
+          { name: 'Downloads (Last Year)', value: `\`${downloads}\``, inline: true },
+          { name: 'Author', value: author, inline: true },
+          { name: 'Keywords', value: keywords, inline: false }
+        ])
+        .setFooter({ text: 'NPM Registry & Downloads API', iconURL: 'https://static-production.npmjs.com/58a1b27d4ca92d1bdf69da57af3f0f7c.png' })
         .setTimestamp();
 
-      message.channel.send(embed);
+      message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error('Error in npm command:', err);
-      message.channel.stopTyping();
       message.channel.send('❌ *An error occurred while fetching the NPM stats!*');
     }
   }

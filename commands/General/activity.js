@@ -1,4 +1,4 @@
-const Discord = require("discord.js");
+const { EmbedBuilder, ActivityType } = require("discord.js");
 const mongoose = require("mongoose");
 
 module.exports = {
@@ -20,7 +20,7 @@ module.exports = {
       for (const doc of activeDocs) {
         const member = guild.members.cache.get(doc.userId);
         const isStillPlaying = member && member.presence && member.presence.activities.some(
-          act => act.name === doc.activityName && act.type !== 'CUSTOM' && act.type !== 'CUSTOM_STATUS'
+          act => act.name === doc.activityName && act.type !== ActivityType.Custom
         );
         if (!isStillPlaying) {
           // Close dangling session
@@ -101,12 +101,12 @@ module.exports = {
         return `${minutes}m`;
       };
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`🎮 Server Activity Analytics — ${guild.name}`)
         .setColor('#5865F2') // Blurple theme
-        .setThumbnail(guild.iconURL({ dynamic: true, size: 256 }))
+        .setThumbnail(guild.iconURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
-        .setFooter("Activity Data | SC SmartTech");
+        .setFooter({ text: "Activity Data | SC SmartTech" });
 
       // Build Top Games Field
       if (topGames.length > 0) {
@@ -114,9 +114,9 @@ module.exports = {
           const activeStr = g.activeCount > 0 ? ` (🔥 ${g.activeCount} live)` : '';
           return `\`${i + 1}.\` **${g.name}** — \`${formatDuration(g.durationMs)}\` total playtime${activeStr}`;
         }).join('\n');
-        embed.addField('🏆 Top 5 Games/Activities', gamesList);
+        embed.addFields({ name: '🏆 Top 5 Games/Activities', value: gamesList });
       } else {
-        embed.addField('🏆 Top 5 Games/Activities', '*No activity data recorded yet.*');
+        embed.addFields({ name: '🏆 Top 5 Games/Activities', value: '*No activity data recorded yet.*' });
       }
 
       // Build Top Players Field
@@ -126,9 +126,9 @@ module.exports = {
           const mention = member ? `<@${p.userId}>` : `\`User ${p.userId}\``;
           return `\`${i + 1}.\` ${mention} — \`${formatDuration(p.durationMs)}\` active`;
         }).join('\n');
-        embed.addField('👤 Top 5 Most Active Members', playersList);
+        embed.addFields({ name: '👤 Top 5 Most Active Members', value: playersList });
       } else {
-        embed.addField('👤 Top 5 Most Active Members', '*No active player data recorded yet.*');
+        embed.addFields({ name: '👤 Top 5 Most Active Members', value: '*No active player data recorded yet.*' });
       }
 
       // Build Live Activities Field
@@ -136,12 +136,12 @@ module.exports = {
         const liveList = liveActivities.map((act) => {
           return `• <@${act.userId}> is playing **${act.activityName}** (for \`${formatDuration(act.elapsedMs)}\`)`;
         }).join('\n');
-        embed.addField('🟢 Live Status Activities', liveList);
+        embed.addFields({ name: '🟢 Live Status Activities', value: liveList });
       } else {
-        embed.addField('🟢 Live Status Activities', '*No members are currently in active game sessions.*');
+        embed.addFields({ name: '🟢 Live Status Activities', value: '*No members are currently in active game sessions.*' });
       }
 
-      return message.channel.send(embed);
+      return message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in activity command:", err);
       return message.channel.send(`❌ *An error occurred while retrieving activity stats: ${err.message}*`);

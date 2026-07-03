@@ -1,4 +1,4 @@
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
     const username = args.join(' ') || 'sc-136';
 
     try {
-      message.channel.startTyping();
+      message.channel.sendTyping().catch(() => {});
 
       const urlName = encodeURIComponent(username);
 
@@ -17,21 +17,23 @@ module.exports = {
       const profileRes = await fetch(`https://api.chess.com/pub/player/${urlName}`);
       
       if (profileRes.status === 404) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Could not find Chess.com user **"${username}"**.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Could not find Chess.com user **"${username}"**.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       if (!profileRes.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Failed to fetch user profile from Chess.com.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Failed to fetch user profile from Chess.com.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       const profile = await profileRes.json();
@@ -40,16 +42,16 @@ module.exports = {
       const statsRes = await fetch(`https://api.chess.com/pub/player/${urlName}/stats`);
       
       if (!statsRes.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Failed to fetch stats for user from Chess.com.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Failed to fetch stats for user from Chess.com.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       const data = await statsRes.json();
-      message.channel.stopTyping();
 
       const bulletRating = data.chess_bullet?.last?.rating || '—';
       const blitzRating = data.chess_blitz?.last?.rating || '—';
@@ -69,29 +71,30 @@ module.exports = {
       const totalGames = w + l + d;
       const recordStr = totalGames > 0 ? `${w}W / ${l}L / ${d}D` : '—';
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`♟️ Chess.com Stats: ${profile.username}`)
         .setURL(profile.url || `https://www.chess.com/member/${profile.username}`)
         .setColor('#7FA650') // Chess.com Green
         .setThumbnail(profile.avatar || '')
-        .addField('Bullet Rating', `\`${bulletRating}\``, true)
-        .addField('Blitz Rating', `\`${blitzRating}\``, true)
-        .addField('Rapid Rating', `\`${rapidRating}\``, true)
-        .addField('Highest Tactics', `\`${tacticsRating}\``, true)
-        .addField('W/L/D Record', `\`${recordStr}\``, true)
-        .addField('Status', profile.status || 'Member', true)
-        .setFooter('Chess.com Public API', 'https://www.chess.com/bundles/web/images/share/chess-logo-single.png')
+        .addFields([
+          { name: 'Bullet Rating', value: `\`${bulletRating}\``, inline: true },
+          { name: 'Blitz Rating', value: `\`${blitzRating}\``, inline: true },
+          { name: 'Rapid Rating', value: `\`${rapidRating}\``, inline: true },
+          { name: 'Highest Tactics', value: `\`${tacticsRating}\``, inline: true },
+          { name: 'W/L/D Record', value: `\`${recordStr}\``, inline: true },
+          { name: 'Status', value: profile.status || 'Member', inline: true }
+        ])
+        .setFooter({ text: 'Chess.com Public API', iconURL: 'https://www.chess.com/bundles/web/images/share/chess-logo-single.png' })
         .setTimestamp();
 
       if (profile.name) {
         embed.setDescription(`**Real Name:** ${profile.name}`);
       }
 
-      message.channel.send(embed);
+      message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error('Error in chess command:', err);
-      message.channel.stopTyping();
       message.channel.send('❌ *An error occurred while fetching Chess.com stats!*');
     }
   }

@@ -1,5 +1,5 @@
+const { AttachmentBuilder } = require('discord.js')
 const { createCanvas, loadImage } = require('@napi-rs/canvas')
-//registerFont(process.cwd() + "/font/LEMONMILK-BoldItalic.otf", { family: "Sans Serif" })
 
 module.exports = {
   name: 'welcome',
@@ -12,7 +12,7 @@ module.exports = {
     
     let avatar;
     try {
-      avatar = await loadImage(target.displayAvatarURL({ format: 'png', dynamic: false }));
+      avatar = await loadImage(target.displayAvatarURL({ extension: 'png', forceStatic: true }));
     } catch (err) {
       console.error("Failed to load welcome command avatar:", err.message);
       try {
@@ -75,11 +75,8 @@ module.exports = {
     ctx.font = "italic 30px sans-serif";
     ctx.fillStyle = "white";
     ctx.fillText(`${target.username}`, 280, 204);
-    message.channel.send({
-      files: [{
-        attachment: canvas.toBuffer(),
-        name: 'sc-welcome.png'
-      }]
-    })
+
+    const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'sc-welcome.png' });
+    message.channel.send({ files: [attachment] });
   }
 }

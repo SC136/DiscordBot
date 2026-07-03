@@ -1,9 +1,11 @@
+const { PermissionFlagsBits } = require('discord.js');
+
 module.exports = {
   name: 'kick',
   description: 'Kick mentioned user from this server.',
   run: async (client, message, [member = '', ...reason] ) => {
 
-    if (!message.member.hasPermission("KICK_MEMBERS")) return message.reply("You cannot kick people.")
+    if (!message.member.permissions.has(PermissionFlagsBits.KickMembers)) return message.reply("You cannot kick people.")
 
     if (!member.match(/\d{17,19}/)){
       return message.channel.send(`\\❌ | ${message.author}, Please provide the ID or mention the user to kick. [mention first before adding the reason]`);
@@ -25,7 +27,7 @@ module.exports = {
       return message.channel.send(`\\❌ | ${message.author}, Please don't kic me!`);
     };
 
-    if (member.id === message.guild.ownerID){
+    if (member.id === message.guild.ownerId){
       return message.channel.send(`\\❌ | ${message.author}, You cannot kick a server owner!`);
     };
 

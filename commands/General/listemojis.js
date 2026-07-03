@@ -1,4 +1,4 @@
-const Discord = require("discord.js")
+const { EmbedBuilder } = require("discord.js")
 
 module.exports = {
     name: "listemoji",
@@ -23,11 +23,11 @@ module.exports = {
             Emojis += Emoji(emoji.id);
         }
     });
-    let Embed = new Discord.MessageEmbed()
-        .setAuthor(`Emojis in ${message.guild.name}.`, message.guild.iconURL())
+    let Embed = new EmbedBuilder()
+        .setAuthor({ name: `Emojis in ${message.guild.name}.`, iconURL: message.guild.iconURL() })
         .setDescription(
-            `**Animated [${Animated}]**:\n${EmojisAnimated}\n\n**Standard [${EmojiCount}]**:\n${Emojis}\n\n**Over all emojis [${OverallEmojis}]**`
+            `**Animated [${Animated}]**:\n${EmojisAnimated || 'None'}\n\n**Standard [${EmojiCount}]**:\n${Emojis || 'None'}\n\n**Over all emojis [${OverallEmojis}]**`
         )
-        .setColor('GREY')
-    message.channel.send(Embed);
+        .setColor('#808080')
+    message.channel.send({ embeds: [Embed] });
 },};

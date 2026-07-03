@@ -1,5 +1,5 @@
-const Discord = require("discord.js")
-request = require("node-superfetch");
+const { EmbedBuilder } = require("discord.js")
+const request = require("node-superfetch");
 
 module.exports = {
   name: 'google',
@@ -18,18 +18,18 @@ module.exports = {
 
     if (!query) return message.channel.send("Please enter the query.");
 
-    href = await search(query);
+    const href = await search(query);
     if (!href) return message.channel.send("Unknown search.");
 
-    const embed = new Discord.MessageEmbed()
+    const embed = new EmbedBuilder()
       .setTitle(href.title)
       .setDescription(href.snippet)
-      .setImage(href.pagemap ? href.pagemap.cse_thumbnail[0].src : null) // Sometimes, the thumbnail might be unavailable in variant site. Return it to null.
+      .setImage(href.pagemap && href.pagemap.cse_thumbnail && href.pagemap.cse_thumbnail[0] ? href.pagemap.cse_thumbnail[0].src : null) // Sometimes, the thumbnail might be unavailable in variant site. Return it to null.
       .setURL(href.link)
       .setColor('#0059FF')
-      .setFooter("Powered By Google | SC SmartTech")
+      .setFooter({ text: "Powered By Google | SC SmartTech" })
 
-    return message.channel.send(embed);
+    return message.channel.send({ embeds: [embed] });
 
     async function search(query) {
       const { body } = await request.get("https://www.googleapis.com/customsearch/v1").query({

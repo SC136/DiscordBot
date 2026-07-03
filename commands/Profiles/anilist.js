@@ -1,4 +1,4 @@
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
     const username = args.join(' ') || 'SC136';
 
     try {
-      message.channel.startTyping();
+      message.channel.sendTyping().catch(() => {});
 
       const statsQuery = `query ($name: String) {
         User(name: $name) {
@@ -46,12 +46,13 @@ module.exports = {
       });
 
       if (!statsRes.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Could not find AniList user **"${username}"** or API error.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Could not find AniList user **"${username}"** or API error.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       const statsData = await statsRes.json();
@@ -59,12 +60,13 @@ module.exports = {
       const stats = user?.statistics?.anime;
 
       if (!user || !stats) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription(`❌ *Could not find AniList user **"${username}"**.*`)
-            .setColor('#E85D5D')
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription(`❌ *Could not find AniList user **"${username}"**.*`)
+              .setColor('#E85D5D')
+          ]
+        });
       }
 
       // Fetch currently watching
@@ -99,30 +101,29 @@ module.exports = {
         }
       }
 
-      message.channel.stopTyping();
-
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`🌸 AniList Profile: ${user.name}`)
         .setURL(`https://anilist.co/user/${encodeURIComponent(user.name)}`)
         .setColor(client.color || '#E8C87A')
         .setThumbnail(thumbnail)
-        .addField('Total Anime', stats.count.toString(), true)
-        .addField('Episodes Watched', stats.episodesWatched.toLocaleString(), true)
-        .addField('Hours Watched', Math.round(stats.minutesWatched / 60).toLocaleString(), true)
-        .addField('Mean Score', stats.meanScore ? `${stats.meanScore.toFixed(1)}/10` : '—', true)
-        .addField('Currently Watching', watchingList, false)
-        .setFooter('AniList GraphQL API', user.avatar?.large || '')
+        .addFields([
+          { name: 'Total Anime', value: stats.count.toString(), inline: true },
+          { name: 'Episodes Watched', value: stats.episodesWatched.toLocaleString(), inline: true },
+          { name: 'Hours Watched', value: Math.round(stats.minutesWatched / 60).toLocaleString(), inline: true },
+          { name: 'Mean Score', value: stats.meanScore ? `${stats.meanScore.toFixed(1)}/10` : '—', inline: true },
+          { name: 'Currently Watching', value: watchingList, inline: false }
+        ])
+        .setFooter({ text: 'AniList GraphQL API', iconURL: user.avatar?.large || '' })
         .setTimestamp();
 
       if (user.bannerImage) {
         embed.setImage(user.bannerImage);
       }
 
-      message.channel.send(embed);
+      message.channel.send({ embeds: [embed] });
 
     } catch (err) {
       console.error('Error in anilist command:', err);
-      message.channel.stopTyping();
       message.channel.send('❌ *An error occurred while fetching the AniList stats!*');
     }
   }

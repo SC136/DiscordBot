@@ -1,3 +1,4 @@
+const { AttachmentBuilder } = require('discord.js');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 GlobalFonts.registerFromPath(process.cwd() + '/font/LEMONMILK-BoldItalic.otf', 'Sans-Serif');
 const Levels = require('discord-xp');
@@ -18,7 +19,7 @@ module.exports = {
 		let avatar;
 		try {
 			avatar = await loadImage(
-				target.displayAvatarURL({ format: 'png', dynamic: false })
+				target.displayAvatarURL({ extension: 'png', forceStatic: true })
 			);
 		} catch (err) {
 			console.error("Failed to load user avatar in canvas.js:", err.message);
@@ -32,33 +33,37 @@ module.exports = {
 		let image;
 		try {
 			image = await loadImage(
-				'https://media.discordapp.net/attachments/779005181760765985/809388797875847168/T3vlBLFLEJSHd6RkJU8R5InYJRyP_6fddL5v2WxzKCxAufkOFxNV-DRx9xgFV6P8t2_TmEZtZGSybv8bahG1JiMR8irnYYoLsePp.png?width=586&height=586'
+				'https://media.discordapp.net/attachments/779005181760765985/809388797875847168/T3vlBLFLEJSHd6RkJU8R5InYJRyP_6fddL5v2WxzKCxAufkOFxNV-DRx9xgFV6P8t2_TmEZtZGSxzKCxAufkOFxNV-DRx9xgFV6P8t2_TmEZtZGSybv8bahG1JiMR8irnYYoLsePp.png?width=586&height=586'
 			);
 		} catch (err) {
 			try {
-				image = await loadImage(client.user.displayAvatarURL({ format: 'png', dynamic: false }));
+				image = await loadImage(client.user.displayAvatarURL({ extension: 'png', forceStatic: true }));
 			} catch (e) {
 				console.error("Failed to load bot avatar fallback in canvas.js:", e.message);
 			}
 		}
 		const flags = {
-			DISCORD_EMPLOYEE: '<:DiscordStaff:810537983514116116>',
-			DISCORD_PARTNER: '<:DiscordPartner:810538029114195999>',
-			BUGHUNTER_LEVEL_1: '<:BugHunter:810537894246612995>',
-			BUGHUNTER_LEVEL_2: '<:BugHunterLvl2:810537924315316264>',
-			HYPESQUAD_EVENTS: '<:HypeSquad:807182171411316786>',
-			HOUSE_BRAVERY: '<:HypeSquadBravery:807182213618860042>',
-			HOUSE_BRILLIANCE: 'House Brilliance',
-			HOUSE_BALANCE: 'House Balance',
-			EARLY_SUPPORTER: '<:EarlySupporter:810535663761096726>',
-			TEAM_USER: 'Team User',
-			SYSTEM: 'System',
-			VERIFIED_BOT: 'Verified Bot',
-			VERIFIED_DEVELOPER: 'Verified Developer'
+			Staff: 'Staff',
+			Partner: 'Partner',
+			BugHunterLevel1: 'Bug Hunter Lvl 1',
+			BugHunterLevel2: 'Bug Hunter Lvl 2',
+			Hypesquad: 'Hypesquad Events',
+			HypeSquadOnlineHouse1: 'House Bravery',
+			HypeSquadOnlineHouse2: 'House Brilliance',
+			HypeSquadOnlineHouse3: 'House Balance',
+			PremiumEarlySupporter: 'Early Supporter',
+			VerifiedBot: 'Verified Bot',
+			VerifiedDeveloper: 'Verified Developer',
+			ActiveDeveloper: 'Active Developer'
 		};
 		const user = await Levels.fetch(target.id, message.guild.id, true);
 
-		let invites = await message.guild.fetchInvites();
+		let invites = new Map();
+		try {
+			invites = await message.guild.invites.fetch();
+		} catch (e) {
+			console.error("Failed to fetch guild invites in canvas.js:", e.message);
+		}
 
 		let memberInvites = invites.filter(
 			i => i.inviter && i.inviter.id === target.id
@@ -86,11 +91,11 @@ module.exports = {
 
 		ctx.font = 'italic 15px sans-serif';
 		ctx.fillStyle = 'white';
-		ctx.fillText(`Rank - ${parseInt(user.position)}`, 170, 26);
+		ctx.fillText(`Rank - ${user ? parseInt(user.position) : 'N/A'}`, 170, 26);
 
 		ctx.font = 'italic 15px sans-serif';
 		ctx.fillStyle = 'white';
-		ctx.fillText(`Level - ${user.level}`, 170, 46);
+		ctx.fillText(`Level - ${user ? user.level : '0'}`, 170, 46);
 
 		ctx.font = 'italic 15px sans-serif';
 		ctx.fillStyle = 'white';
@@ -114,9 +119,13 @@ module.exports = {
 		ctx.font = 'italic 15px sans-serif';
 		ctx.fillStyle = 'white';
 		ctx.fillText(`Badges - `, 170, 146);
+		
+		const userFlags = target.flags ? target.flags.toArray() : [];
+		const badgesList = userFlags.map(flag => flags[flag]).filter(Boolean).join(', ') || 'None';
+		
 		ctx.font = 'italic 14px sans-serif';
 		ctx.fillStyle = 'white';
-		ctx.fillText(`${flags[target.flags.toArray()]}`, 250, 146);
+		ctx.fillText(badgesList, 250, 146);
 
 		ctx.font = 'italic 15px sans-serif';
 		ctx.fillStyle = 'white';
@@ -126,13 +135,7 @@ module.exports = {
 		ctx.fillStyle = 'white';
 		ctx.fillText(`Invites - ${index}`, 170, 186);
 
-		message.channel.send({
-			files: [
-				{
-					attachment: canvas.toBuffer(),
-					name: 'canvas.png'
-				}
-			]
-		});
+		const attachment = new AttachmentBuilder(canvas.toBuffer(), { name: 'canvas.png' });
+		message.channel.send({ files: [attachment] });
 	}
 };

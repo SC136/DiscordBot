@@ -1,4 +1,4 @@
-const { MessageAttachment } = require("discord.js");
+const { AttachmentBuilder } = require("discord.js");
 const canvacord = require("canvacord");
 
 module.exports = {
@@ -6,7 +6,7 @@ module.exports = {
   description: 'Generate a custom rank and XP card image for yourself.',
   run: async (client, message, args) => {
     const Rank = new canvacord.Rank()
-      .setAvatar(message.author.displayAvatarURL({ dynamic: true, format: "jpg" }))
+      .setAvatar(message.author.displayAvatarURL({ forceStatic: false, extension: "jpg" }))
       .setCurrentXP(450)
       .setLevel(7)
       .setRequiredXP(1000)
@@ -18,8 +18,8 @@ module.exports = {
 
     Rank.build()
       .then(data => {
-        const attachment = new MessageAttachment(data, "rank-card.png");
-        message.channel.send(attachment);
+        const attachment = new AttachmentBuilder(data, { name: "rank-card.png" });
+        message.channel.send({ files: [attachment] });
       }).catch(err => {
         console.error(err);
         message.reply("Could not generate card.");

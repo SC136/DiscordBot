@@ -1,4 +1,4 @@
-const Discord = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 
 const WMO = {
@@ -31,7 +31,7 @@ module.exports = {
   description: 'View current weather for a city or default location.',
   run: async (client, message, args) => {
     try {
-      message.channel.startTyping();
+      message.channel.sendTyping().catch(() => {});
 
       let lat = 19.4654;
       let lon = 72.8086;
@@ -44,23 +44,25 @@ module.exports = {
         const geocodeRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=en&format=json`);
         
         if (!geocodeRes.ok) {
-          message.channel.stopTyping();
-          return message.channel.send(
-            new Discord.MessageEmbed()
-              .setDescription("❌ *Failed to connect to the geocoding service.*")
-              .setColor("#E85D5D")
-          );
+          return message.channel.send({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription("❌ *Failed to connect to the geocoding service.*")
+                .setColor("#E85D5D")
+            ]
+          });
         }
 
         const geoData = await geocodeRes.json();
         
         if (!geoData.results || geoData.results.length === 0) {
-          message.channel.stopTyping();
-          return message.channel.send(
-            new Discord.MessageEmbed()
-              .setDescription(`❌ *Could not find any location matching **"${query}"**.*`)
-              .setColor("#E85D5D")
-          );
+          return message.channel.send({
+            embeds: [
+              new EmbedBuilder()
+                .setDescription(`❌ *Could not find any location matching **"${query}"**.*`)
+                .setColor("#E85D5D")
+            ]
+          });
         }
 
         const loc = geoData.results[0];
@@ -75,23 +77,25 @@ module.exports = {
       const response = await fetch(weatherUrl);
 
       if (!response.ok) {
-        message.channel.stopTyping();
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription("❌ *Failed to fetch weather forecast.*")
-            .setColor("#E85D5D")
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription("❌ *Failed to fetch weather forecast.*")
+              .setColor("#E85D5D")
+          ]
+        });
       }
 
       const data = await response.json();
-      message.channel.stopTyping();
 
       if (!data || !data.current) {
-        return message.channel.send(
-          new Discord.MessageEmbed()
-            .setDescription("❌ *Weather data unavailable for this location.*")
-            .setColor("#E85D5D")
-        );
+        return message.channel.send({
+          embeds: [
+            new EmbedBuilder()
+              .setDescription("❌ *Weather data unavailable for this location.*")
+              .setColor("#E85D5D")
+          ]
+        });
       }
 
       const c = data.current;
@@ -106,21 +110,22 @@ module.exports = {
       // Choose a color based on day/night status
       const embedColor = c.is_day === 1 ? '#3498db' : '#2c3e50';
 
-      const embed = new Discord.MessageEmbed()
+      const embed = new EmbedBuilder()
         .setTitle(`🌤️ Weather in ${locationName}`)
         .setDescription(`${emoji} **${desc}**`)
-        .addField("Temperature", `\`${temp}°C\``, true)
-        .addField("Feels Like", `\`${feels}°C\``, true)
-        .addField("Humidity", `\`${humidity}%\``, true)
-        .addField("Wind Speed", `\`${wind} km/h\``, true)
+        .addFields([
+          { name: "Temperature", value: `\`${temp}°C\``, inline: true },
+          { name: "Feels Like", value: `\`${feels}°C\``, inline: true },
+          { name: "Humidity", value: `\`${humidity}%\``, inline: true },
+          { name: "Wind Speed", value: `\`${wind} km/h\``, inline: true }
+        ])
         .setColor(embedColor)
-        .setFooter(`Coordinates: ${lat.toFixed(4)}, ${lon.toFixed(4)} • Open-Meteo`)
+        .setFooter({ text: `Coordinates: ${lat.toFixed(4)}, ${lon.toFixed(4)} • Open-Meteo` })
         .setTimestamp();
 
-      message.channel.send(embed);
+      message.channel.send({ embeds: [embed] });
     } catch (err) {
       console.error("Error in weather command:", err);
-      message.channel.stopTyping();
       message.channel.send("❌ *An error occurred while fetching the weather forecast!*");
     }
   }
