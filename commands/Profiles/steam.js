@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'steam',
@@ -68,8 +69,12 @@ module.exports = {
       message.channel.send({ embeds: [embed] });
 
     } catch (err) {
-      console.error('Error in steam command:', err);
-      message.channel.send('❌ *An error occurred while fetching the Steam profile!*');
+      sendError(message, {
+        title: 'Failed to fetch Steam profile',
+        description: 'An error occurred while fetching the Steam profile stats.',
+        command: 'steam',
+        error: err
+      });
     }
   }
 };

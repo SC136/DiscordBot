@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'anilist',
@@ -123,8 +124,12 @@ module.exports = {
       message.channel.send({ embeds: [embed] });
 
     } catch (err) {
-      console.error('Error in anilist command:', err);
-      message.channel.send('❌ *An error occurred while fetching the AniList stats!*');
+      sendError(message, {
+        title: 'Failed to fetch AniList stats',
+        description: 'An error occurred while fetching AniList statistics. Check the username or try again later.',
+        command: 'anilist',
+        error: err
+      });
     }
   }
 };

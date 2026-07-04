@@ -18,7 +18,11 @@ const {
   EmbedBuilder,
   WebhookClient,
   ChannelType,
-  ActivityType
+  ActivityType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder
 } = require('discord.js');
 const fs = require('fs');
 const client = new Client({
@@ -40,7 +44,8 @@ const prefix = config.prefix;
 const token = process.env.TOKEN;
 const { promisify } = require('util');
 const wait = promisify(setTimeout);
-const ytdl = require('ytdl-core');
+const { Player } = require('discord-player');
+
 const fetch = require("node-fetch");
 const Levels = require('discord-xp');
 const mongoose = require('mongoose');
@@ -55,6 +60,42 @@ if (process.env.MONGO_URI) {
 } else {
   console.warn("WARNING: MONGO_URI is not defined in .env. Levels (discord-xp) commands will be disabled.");
 }
+
+if (!process.env.HAYAI_MUSIC_API_KEY) {
+  console.warn("WARNING: HAYAI_MUSIC_API_KEY is not defined in .env. Music features will fail.");
+}
+
+// Initialize Discord Player
+const player = new Player(client);
+
+const HayaiExtractor = require('./extractors/HayaiExtractor');
+
+// Load custom HayaiExtractor for all music playing
+async function initPlayer() {
+  await player.extractors.register(HayaiExtractor, {});
+}
+initPlayer().catch(err => console.error("Failed to initialize discord-player extractors:", err));
+
+// Register player event handlers
+player.events.on('playerStart', (queue, track) => {
+  if (queue.metadata && queue.metadata.channel) {
+    queue.metadata.channel.send(`🎵 Now playing: **${track.title}** by **${track.author}**`);
+  }
+});
+
+player.events.on('audioTrackAdd', (queue, track) => {
+  if (queue.metadata && queue.metadata.channel) {
+    queue.metadata.channel.send(`➕ Track **${track.title}** queued!`);
+  }
+});
+
+player.events.on('error', (queue, error) => {
+  console.error(`[Player Error] ${error.message}`);
+});
+
+player.events.on('playerError', (queue, error) => {
+  console.error(`[Player Connection Error] ${error.message}`);
+});
 
 // Activity Stats Schema
 const activityStatsSchema = new mongoose.Schema({
@@ -807,7 +848,19 @@ client.on('messageCreate', async message => {
   if (cmd.length == 0) return;
   let command = client.commands.get(cmd);
   if (!command) command = client.commands.get(client.aliases.get(cmd));
-  if (command) command.run(client, message, args);
+  if (command) {
+    try {
+      await command.run(client, message, args);
+    } catch (err) {
+      const { sendError } = require('./utils/errorEmbed');
+      sendError(message, {
+        title: 'Something went wrong',
+        description: 'An unexpected error occurred while running this command. Please try again later.',
+        command: command.name,
+        error: err
+      });
+    }
+  }
 });
 
 //Welcome Embed
@@ -1459,6 +1512,64 @@ client.on('messageCreate', async msg => {
   if (msg.content === 'https://tenor.com/view/cat-wow-surprise-shock-fear-gif-17912457') {
     msg.delete();
     msg.channel.send('***Dont Send That!!!***')
+  }
+});
+
+// Interaction handler for role buttons
+const buttonRoleMap = {
+  'role_announce': { roleId: '822735885643677696', name: 'AnnounceMent Ping' },
+  'role_youtube': { roleId: '822745063712096256', name: 'YouTube Ping' },
+  'role_upload': { roleId: '822745216397606912', name: 'Upload Ping' },
+  'role_twitch': { roleId: '822745401831587900', name: 'Twitch Ping' },
+  'role_partner': { roleId: '822745598276009984', name: 'Partner Ping' },
+  'role_giveaway': { roleId: '822745763435905054', name: 'GiveAway Ping' },
+  'role_pings': { roleId: '729288334257553438', name: 'Mentions/Pings Role' }
+};
+
+client.on('interactionCreate', async interaction => {
+  if (!interaction.isButton()) return;
+
+  if (interaction.customId.startsWith('role_')) {
+    const roleInfo = buttonRoleMap[interaction.customId];
+    if (!roleInfo) return;
+
+    const member = interaction.guild?.members.cache.get(interaction.user.id);
+    if (!member) {
+      return interaction.reply({ content: 'Could not find you in the server!', ephemeral: true });
+    }
+
+    try {
+      const hasRole = member.roles.cache.has(roleInfo.roleId);
+      if (hasRole) {
+        await member.roles.remove(roleInfo.roleId);
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`Role Removed!`)
+              .setDescription(`Your role ***${roleInfo.name}*** has been removed.`)
+              .setColor('#EF4444')
+          ],
+          ephemeral: true
+        });
+      } else {
+        await member.roles.add(roleInfo.roleId);
+        await interaction.reply({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle(`Role Added!`)
+              .setDescription(`You have been granted the role ***${roleInfo.name}***.`)
+              .setColor('#10B981')
+          ],
+          ephemeral: true
+        });
+      }
+    } catch (err) {
+      console.error(`Error toggling role ${roleInfo.name} for ${interaction.user.tag}:`, err);
+      await interaction.reply({
+        content: 'An error occurred while managing your roles. Please contact an administrator.',
+        ephemeral: true
+      });
+    }
   }
 });
 

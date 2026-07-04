@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require("discord.js");
 const { readdirSync } = require("fs");
 const prefix = require("../../config.json").prefix;
 
@@ -7,7 +7,6 @@ module.exports = {
   aliases: ['h'],
   description: "Shows all available bot commands with interactive navigation.",
   run: async (client, message, args) => {
-
     const roleColor =
       message.guild.members.me.displayHexColor === "#000000"
         ? "#ffffff"
@@ -23,7 +22,7 @@ module.exports = {
 
       if (!command) {
         const embed = new EmbedBuilder()
-          .setTitle(`Invalid command! Use \`${prefix} help\` for all of my commands!`)
+          .setTitle(`Invalid command! Use \`${prefix}help\` for all of my commands!`)
           .setColor("FF0000");
         return message.channel.send({ embeds: [embed] });
       }
@@ -34,7 +33,7 @@ module.exports = {
           { name: "PREFIX:", value: `\`${prefix}\`` },
           { name: "COMMAND:", value: command.name ? `\`${command.name}\`` : "No name for this command." },
           { name: "ALIASES:", value: command.aliases ? `\`${command.aliases.join("` `")}\`` : "No aliases for this command." },
-          { name: "USAGE:", value: command.usage ? `\`${prefix} ${command.name} ${command.usage}\`` : `\`${prefix} ${command.name}\`` },
+          { name: "USAGE:", value: command.usage ? `\`${prefix}${command.name} ${command.usage}\`` : `\`${prefix}${command.name}\`` },
           { name: "DESCRIPTION:", value: command.description ? command.description : "No description for this command." }
         ])
         .setFooter({
@@ -46,52 +45,134 @@ module.exports = {
       return message.channel.send({ embeds: [embed] });
     }
 
-    // ── Build all commands list ──
-    const allCommands = [];
-    readdirSync("./commands/").forEach((dir) => {
+    // ── Load all categories and commands ──
+    const categories = {};
+    const dirList = readdirSync("./commands/");
+
+    dirList.forEach((dir) => {
       const commands = readdirSync(`./commands/${dir}/`).filter((file) =>
         file.endsWith(".js")
       );
-      commands.forEach((command) => {
-        let file = require(`../../commands/${dir}/${command}`);
+      const categoryName = dir.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      categories[categoryName] = [];
+      
+      commands.forEach((commandFile) => {
+        let file = require(`../../commands/${dir}/${commandFile}`);
         if (file.name) {
-          allCommands.push({
+          categories[categoryName].push({
             name: file.name,
             description: file.description || "No description.",
-            category: dir
+            aliases: file.aliases || []
           });
         }
       });
     });
 
-    // Group commands by category
-    const categories = {};
-    allCommands.forEach(cmd => {
-      const catName = cmd.category.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-      if (!categories[catName]) {
-        categories[catName] = [];
+    // ── Build Main Home Embed ──
+    const buildHomeEmbed = () => {
+      const homeEmbed = new EmbedBuilder()
+        .setTitle("📬 SC SmartTech — Command Directory")
+        .setDescription(
+          "Welcome to the help menu! Use the dropdown menu below to browse commands by category.\n\n" +
+          "**📁 Categories available:**\n" +
+          Object.keys(categories).map(cat => `• **${cat}** (${categories[cat].length} commands)`).join("\n")
+        )
+        .setColor(roleColor)
+        .setThumbnail(client.user.displayAvatarURL())
+        .setFooter({
+          text: `Requested by ${message.author.tag}`,
+          iconURL: message.author.displayAvatarURL({ forceStatic: false })
+        })
+        .setTimestamp();
+      return homeEmbed;
+    };
+
+    // ── Create Select Menu Options ──
+    const menuOptions = [
+      {
+        label: 'Home Directory',
+        description: 'Show category list',
+        value: 'home_dir',
+        emoji: '🏠'
       }
-      categories[catName].push(cmd);
+    ];
+
+    Object.keys(categories).forEach(cat => {
+      menuOptions.push({
+        label: cat,
+        description: `Show all commands in ${cat}`,
+        value: `cat_${cat.toLowerCase().replace(/\s+/g, '')}`,
+        emoji: '📁'
+      });
     });
 
-    let descriptionText = `Use \`${prefix}help <command>\` for details on a specific command.\n\n`;
-    for (const [catName, cmds] of Object.entries(categories)) {
-      descriptionText += `**📁 Category: ${catName}**\n`;
-      descriptionText += cmds.map(cmd => `• \`${prefix}${cmd.name}\` — *${cmd.description}*`).join("\n") + "\n\n";
-    }
+    const selectMenu = new StringSelectMenuBuilder()
+      .setCustomId('help_select')
+      .setPlaceholder('Select a category...')
+      .addOptions(menuOptions);
 
-    const embed = new EmbedBuilder()
-      .setTitle("📬 SC SmartTech — Command List")
-      .setColor(roleColor)
-      .setDescription(descriptionText.trim())
-      .setThumbnail(client.user.displayAvatarURL())
-      .setFooter({
-        text: `Total Commands: ${allCommands.length}  •  Requested by ${message.author.tag}`,
-        iconURL: message.author.displayAvatarURL({ forceStatic: false })
-      })
-      .setTimestamp();
+    const row = new ActionRowBuilder().addComponents(selectMenu);
 
-    return message.channel.send({ embeds: [embed] });
-  },
+    const helpMsg = await message.channel.send({
+      embeds: [buildHomeEmbed()],
+      components: [row]
+    });
+
+    const collector = helpMsg.createMessageComponentCollector({
+      componentType: ComponentType.StringSelect,
+      time: 60000
+    });
+
+    collector.on('collect', async (interaction) => {
+      if (interaction.user.id !== message.author.id) {
+        return interaction.reply({ content: "Only the user who requested this help menu can interact with it!", ephemeral: true });
+      }
+
+      await interaction.deferUpdate();
+
+      const selectedValue = interaction.values[0];
+
+      if (selectedValue === 'home_dir') {
+        await helpMsg.edit({
+          embeds: [buildHomeEmbed()],
+          components: [row]
+        });
+      } else {
+        // Find the matched category
+        const matchedCategoryName = Object.keys(categories).find(
+          cat => `cat_${cat.toLowerCase().replace(/\s+/g, '')}` === selectedValue
+        );
+
+        if (matchedCategoryName) {
+          const cmds = categories[matchedCategoryName];
+          const catEmbed = new EmbedBuilder()
+            .setTitle(`📁 Category: ${matchedCategoryName}`)
+            .setDescription(
+              cmds.map(cmd => `• \`${prefix}${cmd.name}\` — *${cmd.description}*` + 
+                (cmd.aliases.length ? ` (aliases: \`${cmd.aliases.join(', ')}\`)` : '')
+              ).join('\n') || 'No commands found.'
+            )
+            .setColor(roleColor)
+            .setFooter({
+              text: `Category: ${matchedCategoryName}  •  Requested by ${message.author.tag}`,
+              iconURL: message.author.displayAvatarURL({ forceStatic: false })
+            })
+            .setTimestamp();
+
+          await helpMsg.edit({
+            embeds: [catEmbed],
+            components: [row]
+          });
+        }
+      }
+    });
+
+    collector.on('end', () => {
+      // Disable the select menu component when timed out
+      const disabledRow = new ActionRowBuilder().addComponents(
+        StringSelectMenuBuilder.from(selectMenu).setDisabled(true)
+      );
+      helpMsg.edit({ components: [disabledRow] }).catch(() => {});
+    });
+  }
 };
-

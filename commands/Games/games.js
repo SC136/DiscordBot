@@ -1,32 +1,22 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
 
 module.exports = {
   name: 'game',
   aliases: ['games'],
   description: 'Play a bunch of games with other people',
   category: 'games',
-  usage: 'game (or react to pick a game!)',
+  usage: 'game (or click buttons to pick!)',
   run: async (client, message, args) => {
-
-    // ── Direct launch if a game name is provided ──
+    // If a game name is provided as an argument, directly launch it
     if (args[0]) {
       return handleGame(message, args[0].toLowerCase());
     }
 
-    // ── Interactive Game Selector ──
-    const games = [
-      { emoji: "1️⃣", name: "Guess The Number", cmd: "guessnumber", status: "✅" },
-      { emoji: "2️⃣", name: "Rock Paper Scissors", cmd: "rps", status: "✅" },
-      { emoji: "3️⃣", name: "Hangman", cmd: "hangman", status: "✅" },
-    ];
-
     const embed = new EmbedBuilder()
       .setTitle("🎮  Game Arcade  🎮")
       .setDescription(
-        "**Pick a game by reacting below!**\n" +
-        "You have 30 seconds to choose.\n\n" +
-        games.map(g => `${g.emoji}  **${g.name}** ${g.status}`).join("\n") +
-        "\n\n❌  Cancel"
+        "**Pick a game by clicking a button below!**\n" +
+        "You have 30 seconds to choose."
       )
       .setColor("#7C3AED")
       .setFooter({
@@ -35,61 +25,92 @@ module.exports = {
       })
       .setTimestamp();
 
-    const msg = await message.channel.send({ embeds: [embed] });
+    const row = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('game_guessnumber')
+        .setLabel('🔢 Guess The Number')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('game_rps')
+        .setLabel('✊ Rock Paper Scissors')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('game_hangman')
+        .setLabel('🪓 Hangman')
+        .setStyle(ButtonStyle.Primary),
+      new ButtonBuilder()
+        .setCustomId('game_cancel')
+        .setLabel('❌ Cancel')
+        .setStyle(ButtonStyle.Danger)
+    );
 
-    // Add all game reactions + cancel
-    for (const g of games) {
-      await msg.react(g.emoji);
-    }
-    await msg.react("❌");
+    const msg = await message.channel.send({ embeds: [embed], components: [row] });
 
-    const validEmojis = games.map(g => g.emoji).concat("❌");
-    const filter = (reaction, user) =>
-      validEmojis.includes(reaction.emoji.name) &&
-      user.id === message.author.id;
+    const collector = msg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 30000
+    });
 
-    const collector = msg.createReactionCollector({ filter, max: 1, time: 30000 });
+    collector.on('collect', async (interaction) => {
+      if (interaction.user.id !== message.author.id) {
+        return interaction.reply({ content: "Only the person who started the arcade can select a game!", ephemeral: true });
+      }
 
-    collector.on("collect", async (reaction) => {
-      try { await msg.reactions.removeAll(); } catch (e) { /* missing perms */ }
+      // Disable all buttons upon selection
+      const disabledRow = new ActionRowBuilder().addComponents(
+        row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+      );
 
-      if (reaction.emoji.name === "❌") {
-        return msg.edit({
+      if (interaction.customId === 'game_cancel') {
+        await interaction.update({
           embeds: [
             new EmbedBuilder()
               .setTitle("🎮  Game Arcade")
               .setDescription("Game selection cancelled.")
               .setColor("#EF4444")
-          ]
+          ],
+          components: [disabledRow]
         });
+        return collector.stop('cancelled');
       }
 
-      const selected = games.find(g => g.emoji === reaction.emoji.name);
-      if (!selected) return;
+      const gameMap = {
+        'game_guessnumber': { name: 'Guess The Number', cmd: 'guessnumber' },
+        'game_rps': { name: 'Rock Paper Scissors', cmd: 'rps' },
+        'game_hangman': { name: 'Hangman', cmd: 'hangman' }
+      };
 
-      await msg.edit({
+      const game = gameMap[interaction.customId];
+      if (!game) return;
+
+      await interaction.update({
         embeds: [
           new EmbedBuilder()
-            .setTitle(`🎮  Starting: ${selected.name}`)
+            .setTitle(`🎮 Starting: ${game.name}`)
             .setDescription("Get ready...")
             .setColor("#10B981")
-        ]
+        ],
+        components: [disabledRow]
       });
 
-      return handleGame(message, selected.cmd);
+      collector.stop('selected');
+      return handleGame(message, game.cmd);
     });
 
-    collector.on("end", (collected) => {
-      if (collected.size === 0) {
-        try { msg.reactions.removeAll(); } catch (e) { /* missing perms */ }
+    collector.on('end', (collected, reason) => {
+      if (reason === 'time') {
+        const disabledRow = new ActionRowBuilder().addComponents(
+          row.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+        );
         msg.edit({
           embeds: [
             new EmbedBuilder()
               .setTitle("🎮  Game Arcade")
               .setDescription("⏰ Timed out! No game was selected.")
               .setColor("#6B7280")
-          ]
-        });
+          ],
+          components: [disabledRow]
+        }).catch(() => {});
       }
     });
   }
@@ -99,11 +120,11 @@ module.exports = {
 async function handleGame(message, gameName) {
   if (gameName === 'guessnumber' || gameName === 'guessthenumber') {
     const randomNumber = Math.floor(Math.random() * 10) + 1;
-    message.channel.send({
+    await message.channel.send({
       embeds: [
         new EmbedBuilder()
           .setTitle("🔢 Guess The Number!")
-          .setDescription("I'm thinking of a number between **1** and **10**.\nYou have **30 seconds** to guess it!")
+          .setDescription("I'm thinking of a number between **1** and **10**.\nYou have **30 seconds** to guess it in chat!")
           .setColor("#3B82F6")
       ]
     });
@@ -137,22 +158,46 @@ async function handleGame(message, gameName) {
   }
 
   if (gameName === 'rps') {
-    message.channel.send({
-      embeds: [
-        new EmbedBuilder()
-          .setTitle("✊✋✌️ Rock Paper Scissors!")
-          .setDescription("Reply with `rock`, `paper`, or `scissors` to play!\nYou have **30 seconds**.")
-          .setColor("#F59E0B")
-      ]
+    const validChoices = ['rock', 'paper', 'scissors'];
+    const rpsEmojis = { rock: "✊", paper: "✋", scissors: "✌️" };
+
+    const rpsEmbed = new EmbedBuilder()
+      .setTitle("✊✋✌️ Rock Paper Scissors!")
+      .setDescription("Click a button below to make your choice!\nYou have **30 seconds**.")
+      .setColor("#F59E0B")
+      .setTimestamp();
+
+    const rpsRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId('rps_rock')
+        .setLabel('✊ Rock')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('rps_paper')
+        .setLabel('✋ Paper')
+        .setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder()
+        .setCustomId('rps_scissors')
+        .setLabel('✌️ Scissors')
+        .setStyle(ButtonStyle.Secondary)
+    );
+
+    const rpsMsg = await message.channel.send({
+      embeds: [rpsEmbed],
+      components: [rpsRow]
     });
 
-    const validChoices = ['rock', 'paper', 'scissors'];
-    const emojiMap = { rock: "🪨", paper: "📄", scissors: "✂️" };
-    const filter = res => res.author.id === message.author.id && validChoices.includes(res.content.toLowerCase());
+    const rpsCollector = rpsMsg.createMessageComponentCollector({
+      componentType: ComponentType.Button,
+      time: 30000
+    });
 
-    try {
-      const collected = await message.channel.awaitMessages({ filter, max: 1, time: 30000, errors: ['time'] });
-      const userChoice = collected.first().content.toLowerCase();
+    rpsCollector.on('collect', async (interaction) => {
+      if (interaction.user.id !== message.author.id) {
+        return interaction.reply({ content: "Only the player who started the game can make a choice!", ephemeral: true });
+      }
+
+      const userChoice = interaction.customId.replace('rps_', '');
       const botChoice = validChoices[Math.floor(Math.random() * 3)];
 
       let result, color;
@@ -171,21 +216,44 @@ async function handleGame(message, gameName) {
         color = "#EF4444";
       }
 
-      return message.reply({
+      const disabledRpsRow = new ActionRowBuilder().addComponents(
+        rpsRow.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+      );
+
+      await interaction.update({
         embeds: [
           new EmbedBuilder()
             .setTitle("✊✋✌️ Rock Paper Scissors — Result")
             .setDescription(
-              `${emojiMap[userChoice]} **You:** ${userChoice}\n` +
-              `${emojiMap[botChoice]} **Me:** ${botChoice}\n\n` +
+              `${rpsEmojis[userChoice]} **You chose:** ${userChoice}\n` +
+              `${rpsEmojis[botChoice]} **I chose:** ${botChoice}\n\n` +
               `**${result}**`
             )
             .setColor(color)
-        ]
+        ],
+        components: [disabledRpsRow]
       });
-    } catch (err) {
-      return message.reply("⏰ Time's up! You didn't make a choice.");
-    }
+
+      rpsCollector.stop('resolved');
+    });
+
+    rpsCollector.on('end', (collected, reason) => {
+      if (reason === 'time') {
+        const disabledRpsRow = new ActionRowBuilder().addComponents(
+          rpsRow.components.map(btn => ButtonBuilder.from(btn).setDisabled(true))
+        );
+        rpsMsg.edit({
+          embeds: [
+            new EmbedBuilder()
+              .setTitle("✊✋✌️ Rock Paper Scissors — Timed Out")
+              .setDescription("⏰ Time's up! You didn't make a choice.")
+              .setColor("#6B7280")
+          ],
+          components: [disabledRpsRow]
+        }).catch(() => {});
+      }
+    });
+    return;
   }
 
   if (gameName === 'hangman') {

@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const request = require("node-superfetch");
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'meme',
@@ -24,8 +25,12 @@ module.exports = {
 
       return message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in meme command:", err);
-      return message.channel.send(`❌ *An error occurred while fetching the meme: ${err.message}*`);
+      return sendError(message, {
+        title: 'Failed to fetch meme',
+        description: 'An error occurred while fetching the meme from Reddit.',
+        command: 'meme',
+        error: err
+      });
     }
   }
 };

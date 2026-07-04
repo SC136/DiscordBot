@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { sendError } = require('../../utils/errorEmbed');
 
 const typeColors = {
   normal: '#A8A77A',
@@ -129,8 +130,12 @@ module.exports = {
 
       message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in pokesearch command:", err);
-      message.channel.send("❌ *An error occurred while fetching Pokémon info!*");
+      sendError(message, {
+        title: 'Failed to find Pokémon',
+        description: 'An error occurred while fetching Pokémon info. Make sure the Pokémon name or ID is correct.',
+        command: 'pokesearch',
+        error: err
+      });
     }
   }
 };

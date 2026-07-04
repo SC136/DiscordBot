@@ -1,4 +1,4 @@
-
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'react',
@@ -12,8 +12,13 @@ module.exports = {
         m.react(args[1])
       })
       .catch(err => {
-        message.reply(`Failed to fetch message: ${err.message}`);
+        sendError(message, {
+          title: 'Failed to react',
+          description: `Failed to fetch message or apply reaction: ${err.message}`,
+          command: 'react',
+          error: err
+        });
       });
-    message.delete()
+    message.delete().catch(() => {});
   }
 }

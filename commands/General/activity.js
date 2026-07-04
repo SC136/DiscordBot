@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActivityType } = require("discord.js");
 const mongoose = require("mongoose");
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'activity',
@@ -143,8 +144,12 @@ module.exports = {
 
       return message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in activity command:", err);
-      return message.channel.send(`❌ *An error occurred while retrieving activity stats: ${err.message}*`);
+      return sendError(message, {
+        title: 'Failed to load activity stats',
+        description: 'An error occurred while retrieving activity data. Please try again later.',
+        command: 'activity',
+        error: err
+      });
     }
   }
 };

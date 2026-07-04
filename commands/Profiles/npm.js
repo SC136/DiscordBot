@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'npm',
@@ -90,8 +91,12 @@ module.exports = {
       message.channel.send({ embeds: [embed] });
 
     } catch (err) {
-      console.error('Error in npm command:', err);
-      message.channel.send('❌ *An error occurred while fetching the NPM stats!*');
+      sendError(message, {
+        title: 'Failed to fetch NPM package info',
+        description: 'An error occurred while fetching the package details from NPM registry.',
+        command: 'npm',
+        error: err
+      });
     }
   }
 };

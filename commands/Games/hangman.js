@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const { stripIndents } = require('common-tags');
+const { sendError } = require('../../utils/errorEmbed');
 
 const playing = new Set();
 
@@ -84,6 +85,11 @@ module.exports = {
 			return message.channel.send(`Too bad... It was ${word}...`);
 		} catch (err) {
 			playing.delete(message.channel.id);
-			return message.reply(`Oh no, an error occurred :( \`${err.message}\`. Try again later!`);
+			return sendError(message, {
+				title: 'Failed to run hangman',
+				description: 'An unexpected error occurred while playing hangman.',
+				command: 'hangman',
+				error: err
+			});
 		}
     }}

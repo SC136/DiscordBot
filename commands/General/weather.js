@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { sendError } = require('../../utils/errorEmbed');
 
 const WMO = {
   0: ['☀️', 'Clear sky'],
@@ -125,8 +126,12 @@ module.exports = {
 
       message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in weather command:", err);
-      message.channel.send("❌ *An error occurred while fetching the weather forecast!*");
+      sendError(message, {
+        title: 'Failed to fetch weather',
+        description: 'An error occurred while fetching the weather forecast. Please check your query or try again later.',
+        command: 'weather',
+        error: err
+      });
     }
   }
 };

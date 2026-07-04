@@ -1,5 +1,6 @@
 const { AttachmentBuilder } = require("discord.js");
 const canvacord = require("canvacord");
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'card',
@@ -21,8 +22,12 @@ module.exports = {
         const attachment = new AttachmentBuilder(data, { name: "rank-card.png" });
         message.channel.send({ files: [attachment] });
       }).catch(err => {
-        console.error(err);
-        message.reply("Could not generate card.");
+        sendError(message, {
+          title: 'Failed to generate card',
+          description: 'An error occurred while building the custom rank card image.',
+          command: 'card',
+          error: err
+        });
       });
   }
 }

@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActivityType } = require("discord.js");
 const moment = require("moment");
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'userinfo',
@@ -86,8 +87,12 @@ module.exports = {
 
       return message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in userinfo command:", err);
-      return message.channel.send(`❌ *An error occurred while fetching user info: ${err.message}*`);
+      return sendError(message, {
+        title: 'Failed to load user info',
+        description: 'An error occurred while fetching user information. Please try again later.',
+        command: 'userinfo',
+        error: err
+      });
     }
   }
 };

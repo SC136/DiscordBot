@@ -1,6 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
 const Levels = require('discord-xp');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'pokemon',
@@ -125,8 +126,12 @@ module.exports = {
         }
       });
     } catch (err) {
-      console.error("Error in pokemon command:", err);
-      message.channel.send("❌ *An error occurred while starting the game!*");
+      sendError(message, {
+        title: 'Failed to start Pokémon game',
+        description: 'An error occurred while initializing the "Guess the Pokémon" game. Please try again later.',
+        command: 'pokemon',
+        error: err
+      });
     }
   }
 }

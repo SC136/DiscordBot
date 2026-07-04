@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'imge',
@@ -12,14 +13,11 @@ module.exports = {
       message.channel.send({ embeds: [embed] });
       await message.delete();
     } catch (e) {
-      console.log(String(e.stack));
-      return message.channel.send({
-        embeds: [
-          new EmbedBuilder()
-            .setColor('#EF4444')
-            .setTitle(`❌ An error has occurred`)
-            .setDescription(`\`\`\`${e.stack.slice(0, 2000)}\`\`\``)
-        ]
+      sendError(message, {
+        title: 'Failed to send embed image',
+        description: 'Could not process the embed image command. Make sure the bot has permission to manage messages.',
+        command: 'imge',
+        error: e
       });
     }
   }

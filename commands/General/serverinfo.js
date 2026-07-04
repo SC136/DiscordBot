@@ -1,5 +1,6 @@
 const { EmbedBuilder, ChannelType } = require("discord.js");
 const moment = require("moment");
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'serverinfo',
@@ -80,8 +81,12 @@ module.exports = {
 
       return message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in serverinfo command:", err);
-      return message.channel.send(`❌ *An error occurred while fetching server info: ${err.message}*`);
+      return sendError(message, {
+        title: 'Failed to load server info',
+        description: 'An error occurred while fetching server information. Please try again later.',
+        command: 'serverinfo',
+        error: err
+      });
     }
   }
 };

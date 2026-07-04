@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require('discord.js');
 const fetch = require('node-fetch');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'chess',
@@ -94,8 +95,12 @@ module.exports = {
       message.channel.send({ embeds: [embed] });
 
     } catch (err) {
-      console.error('Error in chess command:', err);
-      message.channel.send('❌ *An error occurred while fetching Chess.com stats!*');
+      sendError(message, {
+        title: 'Failed to fetch Chess.com stats',
+        description: 'An error occurred while fetching Chess.com statistics. Check the username or try again later.',
+        command: 'chess',
+        error: err
+      });
     }
   }
 };

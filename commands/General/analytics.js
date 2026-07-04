@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const mongoose = require("mongoose");
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'analytics',
@@ -242,8 +243,12 @@ module.exports = {
 
       return message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in analytics command:", err);
-      return message.channel.send(`❌ *An error occurred while retrieving server analytics: ${err.message}*`);
+      return sendError(message, {
+        title: 'Failed to load analytics',
+        description: 'An error occurred while retrieving server analytics. Please try again later.',
+        command: 'analytics',
+        error: err
+      });
     }
   }
 };

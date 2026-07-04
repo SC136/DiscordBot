@@ -1,4 +1,4 @@
-
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'reply',
@@ -12,8 +12,13 @@ module.exports = {
         m.reply(args.slice(1).join(" "))
       })
       .catch(err => {
-        message.reply(`Failed to fetch message: ${err.message}`);
+        sendError(message, {
+          title: 'Failed to reply',
+          description: `Failed to fetch message or post reply: ${err.message}`,
+          command: 'reply',
+          error: err
+        });
       });
-    message.delete()
+    message.delete().catch(() => {});
   }
 }

@@ -1,5 +1,5 @@
-const { EmbedBuilder } = require('discord.js')
 const fetch = require('node-fetch')
+const { sendError } = require('../../utils/errorEmbed')
 
 async function twitchUserInfo(username, callback) {
   try {
@@ -30,20 +30,21 @@ module.exports = {
     try {
       twitchUserInfo('sc_136', function(stats) {
         if (!stats) {
-          return console.error("User not found!")
+          return sendError(message, {
+            title: 'User not found',
+            description: 'Could not find the Twitch user. They may not exist or the API may be unavailable.',
+            command: 'twitch'
+          });
         }
         console.log(stats)
         message.channel.send(stats.username)
       })
     } catch (e) {
-      console.log(String(e.stack))
-      return message.channel.send({
-        embeds: [
-          new EmbedBuilder()
-            .setColor('#EF4444')
-            .setTitle(`❌ An error has occurred`)
-            .setDescription(`\`\`\`${e.stack.slice(0, 2000)}\`\`\``)
-        ]
+      sendError(message, {
+        title: 'Failed to fetch Twitch profile',
+        description: 'An error occurred while contacting the Twitch API. Please try again later.',
+        command: 'twitch',
+        error: e
       });
     }
   }

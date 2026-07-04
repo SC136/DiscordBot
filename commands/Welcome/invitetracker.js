@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
         name: "invites",
@@ -30,7 +31,12 @@ module.exports = {
                 ]);
             message.channel.send({ embeds: [embed] });
         } catch (e) {
-            return message.channel.send(e.message)
+            sendError(message, {
+                title: 'Failed to retrieve invites',
+                description: 'An error occurred while tracking invitation details.',
+                command: 'invites',
+                error: e
+            });
         }
     }
 };

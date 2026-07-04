@@ -1,5 +1,6 @@
 const fetch = require("node-superfetch");
 const { EmbedBuilder } = require('discord.js');
+const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
   name: 'youtube-stats',
@@ -46,8 +47,12 @@ module.exports = {
         
       return message.channel.send({ embeds: [embed] });
     } catch (err) {
-      console.error("Error in youtube-stats command:", err);
-      return message.channel.send(`An error occurred: ${err.message}`);
+      return sendError(message, {
+        title: 'Failed to fetch YouTube stats',
+        description: 'An error occurred while fetching the YouTube channel statistics.',
+        command: 'youtube-stats',
+        error: err
+      });
     }
   }
 }
