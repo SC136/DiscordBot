@@ -1,6 +1,10 @@
+const { SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('img')
+    .setDescription('Send a message or image URL via the bot, deleting the original message.'),
   name: 'img',
   description: 'Send a message or image URL via the bot, deleting the original message.',
   run: async (client, message, args) => {

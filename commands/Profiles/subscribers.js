@@ -1,7 +1,10 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const getYoutubeSubscriber = require('getyoutubesubscriber')
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('subscribers')
+    .setDescription('Shows You The Subscriber Count Of SC SmartTech!!!'),
   name: 'subscribers',
   aliases: ['subs', 'total-subs'],
   description: 'Shows You The Subscriber Count Of SC SmartTech!!!',

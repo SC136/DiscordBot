@@ -1,8 +1,11 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 const { paginate } = require('../../utils/paginate');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('invitelb')
+    .setDescription('Invite leaderboard with pagination.'),
   name: 'invitelb',
   description: 'Invite leaderboard with pagination.',
   run: async (bot, message, args) => {

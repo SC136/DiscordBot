@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { stripIndents } = require('common-tags');
 const { sendError } = require('../../utils/errorEmbed');
 
@@ -17,6 +17,9 @@ const wordList = [
 ];
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('hangman')
+    .setDescription('You can save a stickman or else Kill him.'),
     name: "hangman",
     description: "You can save a stickman or else Kill him.",
     run: async(bot,  message, args) => {

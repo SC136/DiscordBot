@@ -1,6 +1,9 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('rr')
+    .setDescription('[Owner Only] Post a new self-roles button embed.'),
   name: 'rr',
   description: '[Owner Only] Post a new self-roles button embed.',
   run: async (client, message, args) => {

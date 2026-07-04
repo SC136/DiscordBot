@@ -1,8 +1,11 @@
-const { AttachmentBuilder } = require("discord.js");
+const { AttachmentBuilder , SlashCommandBuilder } = require('discord.js');
 const canvacord = require("canvacord");
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('card')
+    .setDescription('Generate a custom rank and XP card image for yourself.'),
   name: 'card',
   description: 'Generate a custom rank and XP card image for yourself.',
   run: async (client, message, args) => {

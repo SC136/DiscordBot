@@ -1,7 +1,10 @@
 const Levels = require('discord-xp')
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('level')
+    .setDescription('rank'),
   name: 'level',
   aliases: ['rank', 'xp'],
   description: 'rank',

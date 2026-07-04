@@ -1,8 +1,11 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const mongoose = require("mongoose");
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('analytics')
+    .setDescription('View server statistics and analytics trend over the last few days.'),
   name: 'analytics',
   aliases: ['serverstats', 'svan', 'anal', 'stats'],
   description: 'View server statistics and analytics trend over the last few days.',

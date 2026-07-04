@@ -1,7 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { useQueue } = require('discord-player');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('nowplaying')
+    .setDescription('Display the current playing song details.'),
   name: 'nowplaying',
   aliases: ['np'],
   description: 'Display the current playing song details.',

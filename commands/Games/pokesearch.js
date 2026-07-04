@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 const typeColors = {
@@ -23,6 +23,10 @@ const typeColors = {
 };
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('pokesearch')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('pokemon').setDescription('The name of the pokemon to search for').setRequired(true)),
   name: 'pokesearch',
   aliases: ['searchpokemon', 'pokemonsearch', 'pokemoninfo', 'pokeinfo'],
   description: 'Search for a Pokémon and view its detailed information.',

@@ -1,6 +1,18 @@
-const { PermissionFlagsBits } = require('discord.js');
+const { PermissionFlagsBits , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('kick')
+    .setDescription('Kick mentioned user from this server.')
+    .addUserOption(option => 
+      option.setName('user')
+        .setDescription('The user to kick')
+        .setRequired(true)
+    )
+    .addStringOption(option => 
+      option.setName('reason')
+        .setDescription('The reason for kicking')
+    ),
   name: 'kick',
   description: 'Kick mentioned user from this server.',
   run: async (client, message, [member = '', ...reason] ) => {

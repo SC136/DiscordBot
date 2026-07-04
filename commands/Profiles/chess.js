@@ -1,7 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('chess')
+    .setDescription('View Chess.com statistics, ratings, and records for a user.'),
   name: 'chess',
   aliases: ['chessstats', 'chessrating'],
   description: 'View Chess.com statistics, ratings, and records for a user.',

@@ -1,7 +1,11 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('npm')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('package').setDescription('Package name').setRequired(true)),
   name: 'npm',
   aliases: ['npmstats', 'npm-stats'],
   description: 'View metadata and download statistics for any NPM package.',

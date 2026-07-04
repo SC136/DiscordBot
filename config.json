@@ -3,5 +3,12 @@
   "prefix": ".",
   "color": "#0059ff",
   "owner": "594504468931018752",
-  "guild": "594513706055106560"
+  "guild": "594513706055106560",
+  "disabledCommands": [],
+  "welcome": {
+    "enabled": true,
+    "channel": "714858330295631965",
+    "message": "Welcome {user}! To SC SmartTech Official Discord Server!!!",
+    "imageEnabled": true
+  }
 }

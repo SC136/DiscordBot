@@ -1,8 +1,12 @@
-const { EmbedBuilder, ActivityType } = require("discord.js");
+const { EmbedBuilder, ActivityType , SlashCommandBuilder } = require('discord.js');
 const moment = require("moment");
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('userinfo')
+    .setDescription('No description provided')
+    .addUserOption(opt => opt.setName('user').setDescription('User to get info for').setRequired(false)),
   name: 'userinfo',
   aliases: ['ui', 'whois', 'user'],
   description: 'View detailed information about a server member.',

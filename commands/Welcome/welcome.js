@@ -1,7 +1,10 @@
-const { AttachmentBuilder } = require('discord.js')
+const { AttachmentBuilder , SlashCommandBuilder } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas')
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('welcome')
+    .setDescription('welcome'),
   name: 'welcome',
   aliases: ['wel'],
   description: 'welcome',

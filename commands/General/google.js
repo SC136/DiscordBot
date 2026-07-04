@@ -1,7 +1,10 @@
-const { EmbedBuilder } = require("discord.js")
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const request = require("node-superfetch");
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('google')
+    .setDescription('Search Google and return the top result.'),
   name: 'google',
   aliases: ['gl'],
   description: 'Search Google and return the top result.',

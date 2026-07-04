@@ -1,6 +1,12 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('partnerannounce')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('url').setDescription('Invite URL').setRequired(true))
+    .addStringOption(opt => opt.setName('thumbnail').setDescription('Thumbnail URL').setRequired(true))
+    .addStringOption(opt => opt.setName('description').setDescription('Server Description').setRequired(true)),
   name: 'partnerannounce',
   usage: 'url thumbnail description',
   description: '[Owner Only] Announce a new server partnership with an embed and URL.',

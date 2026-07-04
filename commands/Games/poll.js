@@ -1,6 +1,9 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('poll')
+    .setDescription('Create a dynamic poll with button voting.'),
   name: 'poll',
   description: 'Create a dynamic poll with button voting.',
   run: async (client, message, args) => {

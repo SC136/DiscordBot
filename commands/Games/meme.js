@@ -1,8 +1,11 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const request = require("node-superfetch");
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('meme')
+    .setDescription('Fetch a random hot meme from Reddit.'),
   name: 'meme',
   aliases: ['dankmeme', 'joke'],
   description: 'Fetch a random hot meme from Reddit.',

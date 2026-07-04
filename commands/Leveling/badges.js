@@ -1,6 +1,9 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('badges')
+    .setDescription('View the Discord badges of a user.'),
   name: 'badges',
   description: 'View the Discord badges of a user.',
   run: async (client, message, args) => {

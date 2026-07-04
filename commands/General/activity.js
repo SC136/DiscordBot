@@ -1,8 +1,11 @@
-const { EmbedBuilder, ActivityType } = require("discord.js");
+const { EmbedBuilder, ActivityType , SlashCommandBuilder } = require('discord.js');
 const mongoose = require("mongoose");
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('activity')
+    .setDescription('View server activity data, including top games, top active players, and live status.'),
   name: 'activity',
   aliases: ['act', 'activities'],
   description: 'View server activity data, including top games, top active players, and live status.',

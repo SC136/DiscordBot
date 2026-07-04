@@ -1,9 +1,12 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const Levels = require("discord-xp");
 const { sendError } = require('../../utils/errorEmbed');
 const { paginate } = require('../../utils/paginate');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('leaderboard')
+    .setDescription('View the server level and XP leaderboard with pagination.'),
   name: 'leaderboard',
   aliases: ['lb', 'xplb'],
   description: 'View the server level and XP leaderboard with pagination.',

@@ -1,8 +1,11 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { useQueue } = require('discord-player');
 const { paginate } = require('../../utils/paginate');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('queue')
+    .setDescription('View the music queue with pagination.'),
   name: 'queue',
   aliases: ['q'],
   description: 'View the music queue with pagination.',

@@ -1,8 +1,11 @@
-const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, StringSelectMenuBuilder, ComponentType , SlashCommandBuilder } = require('discord.js');
 const { readdirSync } = require("fs");
 const prefix = require("../../config.json").prefix;
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Shows all available bot commands with interactive navigation.'),
   name: "help",
   aliases: ['h'],
   description: "Shows all available bot commands with interactive navigation.",

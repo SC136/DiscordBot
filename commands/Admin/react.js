@@ -1,6 +1,10 @@
+const { SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('react')
+    .setDescription('[Owner Only] Force the bot to react to a specific message ID with an emoji.'),
   name: 'react',
   description: '[Owner Only] Force the bot to react to a specific message ID with an emoji.',
   run: async (client, message, args) => {

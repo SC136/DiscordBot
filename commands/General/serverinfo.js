@@ -1,8 +1,11 @@
-const { EmbedBuilder, ChannelType } = require("discord.js");
+const { EmbedBuilder, ChannelType , SlashCommandBuilder } = require('discord.js');
 const moment = require("moment");
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('serverinfo')
+    .setDescription('View detailed statistics and metadata about this server.'),
   name: 'serverinfo',
   aliases: ['si', 'server', 'guildinfo'],
   description: 'View detailed statistics and metadata about this server.',

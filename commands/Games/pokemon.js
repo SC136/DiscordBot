@@ -1,8 +1,11 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const Levels = require('discord-xp');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('pokemon')
+    .setDescription('Play a game of Guess the Pokémon!'),
   name: 'pokemon',
   aliases: ['guesspokemon', 'whosthatpokemon', 'wtp'],
   description: 'Play a game of Guess the Pokémon!',

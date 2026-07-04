@@ -1,6 +1,10 @@
+const { SlashCommandBuilder } = require('discord.js');
 const { useQueue } = require('discord-player');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('stop')
+    .setDescription('Stop the music player, clear the queue, and leave the voice channel.'),
   name: 'stop',
   aliases: ['leave', 'disconnect'],
   description: 'Stop the music player, clear the queue, and leave the voice channel.',

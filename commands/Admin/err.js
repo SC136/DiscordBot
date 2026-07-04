@@ -1,6 +1,9 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('err')
+    .setDescription('[Owner Only] Edit and update the self-roles reaction embed.'),
   name: 'err',
   description: '[Owner Only] Edit and update the self-roles reaction embed.',
   run: async (client, message, args) => {

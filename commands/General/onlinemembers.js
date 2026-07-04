@@ -1,6 +1,9 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('onlinemembers')
+    .setDescription('View the count of members currently online in the server.'),
   name: 'onlinemembers',
   aliases: ['om'],
   description: 'View the count of members currently online in the server.',

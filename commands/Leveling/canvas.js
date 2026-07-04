@@ -1,10 +1,13 @@
-const { AttachmentBuilder } = require('discord.js');
+const { AttachmentBuilder , SlashCommandBuilder } = require('discord.js');
 const { createCanvas, loadImage, GlobalFonts } = require('@napi-rs/canvas');
 const { sendError } = require('../../utils/errorEmbed');
 GlobalFonts.registerFromPath(process.cwd() + '/font/LEMONMILK-BoldItalic.otf', 'Sans-Serif');
 const Levels = require('discord-xp');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('canvas')
+    .setDescription('canvas'),
 	name: 'canvas',
 	aliases: ['can'],
 	description: 'canvas',

@@ -1,3 +1,4 @@
+const { SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed')
 
 async function twitchUserInfo(username, callback) {
@@ -23,6 +24,10 @@ async function twitchUserInfo(username, callback) {
 }
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('twitch')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('channel').setDescription('Channel name').setRequired(true)),
   name: 'twitch',
   description: 'View Twitch user details for sc_136.',
   run: async (client, message, args) => {

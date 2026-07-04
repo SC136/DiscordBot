@@ -1,6 +1,10 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('youtube')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('query').setDescription('Channel search query').setRequired(true)),
   name: 'youtube',
   aliases: ['channel', 'yt', 'youtubechannel', 'youtube-channel', 'youtube channel'],
   description: 'Get My YouTube Channel Link',

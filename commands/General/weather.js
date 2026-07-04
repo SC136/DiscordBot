@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 const WMO = {
@@ -26,6 +26,10 @@ const WMO = {
 };
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('weather')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('location').setDescription('City or Zip Code').setRequired(true)),
   name: 'weather',
   aliases: ['temp', 'forecast', 'wxtemp'],
   description: 'View current weather for a city or default location.',

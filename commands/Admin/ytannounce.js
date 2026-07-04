@@ -1,6 +1,9 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('ytannounce')
+    .setDescription('[Owner Only] Announce a new YouTube video with an embed and URL.'),
   name: 'ytannounce',
   aliases: ['yta'],
   description: '[Owner Only] Announce a new YouTube video with an embed and URL.',

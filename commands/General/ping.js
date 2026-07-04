@@ -1,5 +1,8 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('ping')
+    .setDescription('Returns latency and API ping'),
     name : 'ping',
     category : 'info',
     description : 'Returns latency and API ping',

@@ -1,6 +1,9 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('game')
+    .setDescription('Play a bunch of games with other people'),
   name: 'game',
   aliases: ['games'],
   description: 'Play a bunch of games with other people',

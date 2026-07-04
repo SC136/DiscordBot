@@ -1,7 +1,11 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('anilist')
+    .setDescription('No description provided')
+    .addStringOption(opt => opt.setName('query').setDescription('Anime or Manga name').setRequired(true)),
   name: 'anilist',
   aliases: ['al'],
   description: 'View AniList statistics and currently watching anime for a user.',

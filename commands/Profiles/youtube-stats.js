@@ -1,8 +1,11 @@
 const fetch = require("node-superfetch");
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('youtube-stats')
+    .setDescription('Shows SC SmartTech YT Stats'),
   name: 'youtube-stats',
   aliases: ['ytstats', 'yts'],
   description: 'Shows SC SmartTech YT Stats',

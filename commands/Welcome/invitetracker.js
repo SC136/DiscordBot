@@ -1,7 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('invites')
+    .setDescription('Shows Users Joined Through Someone\'s Invites'),
         name: "invites",
         description: "Shows Users Joined Through Someone's Invites",
     run: async (bot, message, args) => {

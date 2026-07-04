@@ -1,6 +1,9 @@
-const { EmbedBuilder } = require('discord.js')
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('uptime')
+    .setDescription('bot\'s uptime'),
     name: 'uptime',
     description: 'bot\'s uptime',
     aliases : ['up'],

@@ -1,7 +1,15 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { useMainPlayer } = require('discord-player');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('play')
+    .setDescription('Play a song or playlist in your voice channel.')
+    .addStringOption(option => 
+      option.setName('query')
+        .setDescription('The song name or URL to play')
+        .setRequired(true)
+    ),
   name: 'play',
   aliases: ['p'],
   description: 'Play a song or playlist in your voice channel.',

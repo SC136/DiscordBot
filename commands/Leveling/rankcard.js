@@ -1,7 +1,10 @@
-const { AttachmentBuilder } = require('discord.js')
+const { AttachmentBuilder , SlashCommandBuilder } = require('discord.js');
 const Levels = require('discord-xp')
 const canvacord = require('canvacord')
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('rankcard')
+    .setDescription('Shows the current level and rank of the user!'),
   name: 'rankcard',
   description: 'Shows the current level and rank of the user!',
   run: async (client, message, args) => {

@@ -1,6 +1,9 @@
-const { EmbedBuilder } = require("discord.js")
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('listemoji')
+    .setDescription('View all emojis in the guild'),
     name: "listemoji",
     description: "View all emojis in the guild",
     aliases: ['emoji'],

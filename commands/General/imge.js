@@ -1,7 +1,10 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
+  data: new SlashCommandBuilder()
+    .setName('imge')
+    .setDescription('Send an image URL wrapped inside a beautiful MessageEmbed, deleting the original message.'),
   name: 'imge',
   description: 'Send an image URL wrapped inside a beautiful MessageEmbed, deleting the original message.',
   run: async (client, message, args) => {

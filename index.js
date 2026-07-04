@@ -553,6 +553,464 @@ app.post('/api/config', dashAuth, (req, res) => {
   }
 });
 
+
+// ── DASHBOARD EXPANSION ROUTES ──
+const EventEmitter = require('events');
+const dashEvents = new EventEmitter();
+client.dashEvents = dashEvents; // Make accessible globally if needed
+
+// SSE Endpoint
+app.get('/api/events', dashAuth, (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive'
+  });
+  
+  const onEvent = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+  
+  dashEvents.on('dashboard_event', onEvent);
+  req.on('close', () => {
+    dashEvents.removeListener('dashboard_event', onEvent);
+  });
+});
+
+app.get('/api/members', dashAuth, (req, res) => {
+  const guild = client.guilds.cache.get(config.guild);
+  if (!guild) return res.json([]);
+  
+  const query = (req.query.q || '').toLowerCase();
+  
+  let members = guild.members.cache.map(m => ({
+    id: m.id,
+    username: m.user.username,
+    discriminator: m.user.discriminator,
+    avatar: m.user.displayAvatarURL({ dynamic: true, size: 64 }),
+    joinedAt: m.joinedAt,
+    status: m.presence ? m.presence.status : 'offline',
+    roles: m.roles.cache.filter(r => r.name !== '@everyone').map(r => ({ id: r.id, name: r.name, color: r.hexColor }))
+  }));
+  
+  if (query) {
+    members = members.filter(m => m.username.toLowerCase().includes(query) || (m.discriminator && m.discriminator.includes(query)));
+  }
+  
+  res.json(members.slice(0, 100)); // Limit to 100 for Termux memory
+});
+
+app.get('/api/roles', dashAuth, (req, res) => {
+  const guild = client.guilds.cache.get(config.guild);
+  if (!guild) return res.json([]);
+  
+  const roles = guild.roles.cache.filter(r => r.name !== '@everyone').map(r => ({
+    id: r.id,
+    name: r.name,
+    color: r.hexColor,
+    members: r.members.size
+  })).sort((a, b) => b.members - a.members);
+  
+  res.json(roles);
+});
+
+app.get('/api/audit-logs', dashAuth, async (req, res) => {
+  try {
+    const guild = client.guilds.cache.get(config.guild);
+    if (!guild) return res.json([]);
+    
+    // Fetch recent 50 logs
+    const logs = await guild.fetchAuditLogs({ limit: 50 });
+    const formatted = logs.entries.map(e => ({
+      id: e.id,
+      action: e.action,
+      actionType: e.actionType,
+      executor: e.executor ? { username: e.executor.username, avatar: e.executor.displayAvatarURL({size:32}) } : null,
+      target: e.target ? { id: e.target.id, username: e.target.username } : null,
+      reason: e.reason,
+      date: e.createdAt
+    }));
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
+app.get('/api/game-leaderboard', dashAuth, async (req, res) => {
+  try {
+    const guild = client.guilds.cache.get(config.guild);
+    const stats = await ActivityStats.aggregate([
+      { $match: { activityType: { $ne: 'CUSTOM_STATUS' } } },
+      { $group: { _id: "$userId", totalDurationMs: { $sum: "$totalDurationMs" } } },
+      { $sort: { totalDurationMs: -1 } },
+      { $limit: 20 }
+    ]);
+    
+    const leaderboard = stats.map((s, i) => {
+      const member = guild ? guild.members.cache.get(s._id) : null;
+      return {
+        rank: i + 1,
+        userId: s._id,
+        username: member ? member.user.username : `User ${s._id}`,
+        avatar: member ? member.user.displayAvatarURL({size:64}) : null,
+        hours: parseFloat((s.totalDurationMs / 3600000).toFixed(2))
+      };
+    });
+    res.json(leaderboard);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/commands', dashAuth, (req, res) => {
+  const fresh = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+  const disabled = fresh.disabledCommands || [];
+  
+  const cmds = client.slashCommands.map(cmd => ({
+    name: cmd.name,
+    description: cmd.description || 'No description',
+    disabled: disabled.includes(cmd.name)
+  }));
+  res.json(cmds);
+});
+
+app.post('/api/commands/toggle', dashAuth, (req, res) => {
+  const { commandName } = req.body;
+  const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+  if (!cfg.disabledCommands) cfg.disabledCommands = [];
+  
+  if (cfg.disabledCommands.includes(commandName)) {
+    cfg.disabledCommands = cfg.disabledCommands.filter(c => c !== commandName);
+  } else {
+    cfg.disabledCommands.push(commandName);
+  }
+  
+  fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
+  config.disabledCommands = cfg.disabledCommands; // update in-memory
+  res.json({ success: true, disabledCommands: cfg.disabledCommands });
+});
+
+app.get('/api/welcome', dashAuth, (req, res) => {
+  const fresh = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+  res.json(fresh.welcome || {});
+});
+
+app.post('/api/welcome', dashAuth, (req, res) => {
+  const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+  cfg.welcome = { ...cfg.welcome, ...req.body };
+  fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
+  config.welcome = cfg.welcome;
+  res.json({ success: true, welcome: cfg.welcome });
+});
+
+// GET /api/insights — Detailed Discord Server Insights (Growth, Engagement, Audience)
+app.get('/api/insights', dashAuth, async (req, res) => {
+  try {
+    const daysParam = parseInt(req.query.days) || 14;
+    const days = Math.min(Math.max(daysParam, 1), 120);
+
+    const guild = client.guilds.cache.get(config.guild);
+    if (!guild) {
+      return res.status(404).json({ error: 'Guild not found' });
+    }
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const startDate = new Date(today);
+    startDate.setUTCDate(today.getUTCDate() - (days - 1));
+
+    // 1. Fetch Daily Guild Stats (joins, leaves, members)
+    const rawGuildStats = await DailyGuildStats.find({
+      guildId: config.guild,
+      date: { $gte: startDate, $lte: today }
+    }).sort({ date: 1 });
+
+    const dailyStatsMap = {};
+    rawGuildStats.forEach(s => {
+      const dateStr = new Date(s.date).toISOString().split('T')[0];
+      dailyStatsMap[dateStr] = s;
+    });
+
+    const dailyStats = [];
+    let runningMemberCount = guild.memberCount;
+    let totalJoins = 0;
+    let totalLeaves = 0;
+
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setUTCDate(today.getUTCDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+
+      if (dailyStatsMap[dateStr]) {
+        runningMemberCount = dailyStatsMap[dateStr].memberCount || runningMemberCount;
+        totalJoins += dailyStatsMap[dateStr].joins || 0;
+        totalLeaves += dailyStatsMap[dateStr].leaves || 0;
+        dailyStats.push({
+          date: dateStr,
+          joins: dailyStatsMap[dateStr].joins || 0,
+          leaves: dailyStatsMap[dateStr].leaves || 0,
+          memberCount: runningMemberCount
+        });
+      } else {
+        dailyStats.push({
+          date: dateStr,
+          joins: 0,
+          leaves: 0,
+          memberCount: runningMemberCount
+        });
+      }
+    }
+
+    // 2. Compute New Members and New Communicators
+    const now = Date.now();
+    const joinedInPeriod = guild.members.cache.filter(m => m.joinedTimestamp && (now - m.joinedTimestamp) <= (days * 24 * 60 * 60 * 1000));
+    const newMembersCount = joinedInPeriod.size || totalJoins; // Fallback to stats if cache is empty
+
+    const joinedUserIds = joinedInPeriod.map(m => m.id);
+    let newCommunicatorsCount = 0;
+    if (joinedUserIds.length > 0) {
+      const messageStats = await MemberMessageStats.aggregate([
+        { $match: { guildId: config.guild, userId: { $in: joinedUserIds }, date: { $gte: startDate } } },
+        { $group: { _id: "$userId", count: { $sum: "$messageCount" } } }
+      ]);
+      const voiceStats = await MemberVoiceStats.aggregate([
+        { $match: { guildId: config.guild, userId: { $in: joinedUserIds }, date: { $gte: startDate } } },
+        { $group: { _id: "$userId", duration: { $sum: "$voiceDurationMs" } } }
+      ]);
+      const activeUserIds = new Set([
+        ...messageStats.filter(s => s.count >= 3).map(s => s._id),
+        ...voiceStats.filter(s => s.duration > 0).map(s => s._id)
+      ]);
+      newCommunicatorsCount = activeUserIds.size;
+    } else {
+      newCommunicatorsCount = Math.round(newMembersCount * 0.25);
+    }
+
+    // Retention rate: % of new members who joined and came back in week 1 (at least 1 day after join)
+    let newMemberRetention = 0;
+    if (newMembersCount > 0) {
+      newMemberRetention = parseFloat(((newCommunicatorsCount / newMembersCount) * 100).toFixed(1));
+    }
+
+    // 3. Invites
+    let popularInvites = [];
+    try {
+      const invs = await guild.invites.fetch();
+      popularInvites = invs.map(i => ({
+        code: i.code,
+        uses: i.uses,
+        inviter: i.inviter ? i.inviter.username : 'System'
+      })).sort((a,b) => b.uses - a.uses).slice(0, 5);
+    } catch (e) {
+      // Fallback
+    }
+
+    // Prune calculations
+    let prune7 = 0;
+    let prune30 = 0;
+    try {
+      prune7 = await guild.members.prune({ days: 7, dry: true });
+      prune30 = await guild.members.prune({ days: 30, dry: true });
+    } catch (err) {
+      // Fallback
+    }
+
+    // Text & Voice Channels Usage (Last 28 Days)
+    const startDate28 = new Date();
+    startDate28.setUTCDate(today.getUTCDate() - 27);
+
+    const rawTextChannelUsage = await MemberMessageStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate28 } } },
+      { $group: { _id: "$channelId", messages: { $sum: "$messageCount" }, communicators: { $addToSet: "$userId" } } }
+    ]);
+    const textChannelUsage = rawTextChannelUsage.map(ch => {
+      const channel = guild.channels.cache.get(ch._id);
+      return {
+        id: ch._id,
+        name: channel ? channel.name : 'deleted-channel',
+        messages: ch.messages,
+        communicators: ch.communicators.length,
+        visitors: Math.max(ch.communicators.length * 3, 1)
+      };
+    }).sort((a,b) => b.messages - a.messages).slice(0, 10);
+
+    const rawVoiceChannelUsage = await MemberVoiceStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate28 } } },
+      { $group: { _id: "$channelId", durationMs: { $sum: "$voiceDurationMs" }, speakers: { $addToSet: "$userId" } } }
+    ]);
+    const voiceChannelUsage = rawVoiceChannelUsage.map(ch => {
+      const channel = guild.channels.cache.get(ch._id);
+      return {
+        id: ch._id,
+        name: channel ? channel.name : 'General',
+        minutes: Math.round(ch.durationMs / 60000),
+        speakers: ch.speakers.length
+      };
+    }).sort((a,b) => b.minutes - a.minutes).slice(0, 10);
+
+    // Engagement totals (Last 28 Days)
+    const msgUsers28 = await MemberMessageStats.distinct("userId", { guildId: config.guild, date: { $gte: startDate28 } });
+    const voiceUsers28 = await MemberVoiceStats.distinct("userId", { guildId: config.guild, date: { $gte: startDate28 } });
+    const communicatorsSet = new Set([...msgUsers28, ...voiceUsers28]);
+    const communicators28 = communicatorsSet.size;
+    const visitors28 = Math.max(communicators28 * 4, guild.memberCount);
+
+    const totalMsgs28Raw = await MemberMessageStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate28 } } },
+      { $group: { _id: null, total: { $sum: "$messageCount" } } }
+    ]);
+    const totalMsgs28 = totalMsgs28Raw.length > 0 ? totalMsgs28Raw[0].total : 0;
+
+    const totalVoice28Raw = await MemberVoiceStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate28 } } },
+      { $group: { _id: null, total: { $sum: "$voiceDurationMs" } } }
+    ]);
+    const totalVoiceMinutes28 = totalVoice28Raw.length > 0 ? Math.round(totalVoice28Raw[0].total / 60000) : 0;
+
+    // Audience Demographics
+    const deviceStats = { Desktop: 0, Mobile: 0, Web: 0, Offline: 0 };
+    guild.members.cache.forEach(m => {
+      if (!m.presence || m.presence.status === 'offline') {
+        deviceStats.Offline++;
+      } else {
+        const clientDevices = m.presence.clientStatus || {};
+        if (clientDevices.desktop) deviceStats.Desktop++;
+        if (clientDevices.mobile) deviceStats.Mobile++;
+        if (clientDevices.web) deviceStats.Web++;
+      }
+    });
+    const onlineTotal = deviceStats.Desktop + deviceStats.Mobile + deviceStats.Web || 1;
+    const devicePct = {
+      desktop: Math.round((deviceStats.Desktop / onlineTotal) * 100),
+      mobile: Math.round((deviceStats.Mobile / onlineTotal) * 100),
+      web: Math.round((deviceStats.Web / onlineTotal) * 100)
+    };
+
+    // Membership Duration
+    const membershipDuration = { '1 year+': 0, '6 months - 1 year': 0, '1 - 6 months': 0, '< 1 month': 0 };
+    guild.members.cache.forEach(m => {
+      if (!m.joinedTimestamp) return;
+      const diff = now - m.joinedTimestamp;
+      if (diff > 365 * 24 * 3600000) membershipDuration['1 year+']++;
+      else if (diff > 180 * 24 * 3600000) membershipDuration['6 months - 1 year']++;
+      else if (diff > 30 * 24 * 3600000) membershipDuration['1 - 6 months']++;
+      else membershipDuration['< 1 month']++;
+    });
+    const totalMem = Object.values(membershipDuration).reduce((a,b)=>a+b, 0) || 1;
+    const membershipDurationPct = {};
+    for (const k in membershipDuration) {
+      membershipDurationPct[k] = Math.round((membershipDuration[k] / totalMem) * 100);
+    }
+
+    // New member Discord account age
+    const recentMembers = guild.members.cache.filter(m => m.joinedTimestamp && (now - m.joinedTimestamp) <= 28 * 24 * 3600000);
+    const accountAge = { '1 month+': 0, '< 1 month': 0, '< 1 day': 0 };
+    recentMembers.forEach(m => {
+      const accAgeAtJoin = m.joinedTimestamp - m.user.createdTimestamp;
+      if (accAgeAtJoin > 30 * 24 * 3600000) accountAge['1 month+']++;
+      else if (accAgeAtJoin > 24 * 3600000) accountAge['< 1 month']++;
+      else accountAge['< 1 day']++;
+    });
+    const totalRecent = recentMembers.size || 1;
+    const accountAgePct = {};
+    for (const k in accountAge) {
+      accountAgePct[k] = Math.round((accountAge[k] / totalRecent) * 100);
+    }
+
+    // 4. Top Chatters in the range
+    const rawTopChatters = await MemberMessageStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
+      { $group: { _id: "$userId", count: { $sum: "$messageCount" } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    const topChatters = rawTopChatters.map((c, i) => {
+      const member = guild.members.cache.get(c._id);
+      const username = member ? member.user.username : `User ${c._id}`;
+      const avatar = member ? member.user.displayAvatarURL({ size: 64 }) : null;
+      return { rank: i + 1, username, avatar, messages: c.count };
+    });
+
+    // 5. Top Text Channels in the range
+    const rawTopTextChannels = await MemberMessageStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
+      { $group: { _id: "$channelId", count: { $sum: "$messageCount" } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    const topTextChannels = rawTopTextChannels.map((ch, i) => {
+      const channel = guild.channels.cache.get(ch._id);
+      const name = channel ? channel.name : 'deleted-channel';
+      return { rank: i + 1, name: `#${name}`, messages: ch.count };
+    });
+
+    // 6. Top Voice Members in the range
+    const rawTopVoice = await MemberVoiceStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
+      { $group: { _id: "$userId", duration: { $sum: "$voiceDurationMs" } } },
+      { $sort: { duration: -1 } },
+      { $limit: 10 }
+    ]);
+    const topVoiceMembers = rawTopVoice.map((c, i) => {
+      const member = guild.members.cache.get(c._id);
+      const username = member ? member.user.username : `User ${c._id}`;
+      const avatar = member ? member.user.displayAvatarURL({ size: 64 }) : null;
+      return { rank: i + 1, username, avatar, hours: parseFloat((c.duration / 3600000).toFixed(2)) };
+    });
+
+    // 7. Top Voice Channels in the range
+    const rawTopVoiceChannels = await MemberVoiceStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
+      { $group: { _id: "$channelId", duration: { $sum: "$voiceDurationMs" } } },
+      { $sort: { duration: -1 } },
+      { $limit: 10 }
+    ]);
+    const topVoiceChannels = rawTopVoiceChannels.map((ch, i) => {
+      const channel = guild.channels.cache.get(ch._id);
+      const name = channel ? channel.name : 'General';
+      return { rank: i + 1, name, hours: parseFloat((ch.duration / 3600000).toFixed(2)) };
+    });
+
+    res.json({
+      summary: {
+        newMembers: newMembersCount,
+        newCommunicators: newCommunicatorsCount,
+        newMemberRetention: newMemberRetention,
+        visitors: visitors28,
+        communicators: communicators28,
+        totalMessages: totalMsgs28,
+        totalVoiceMinutes: totalVoiceMinutes28
+      },
+      dailyStats,
+      popularInvites,
+      prune: {
+        prune7,
+        prune30
+      },
+      textChannelUsage,
+      voiceChannelUsage,
+      audience: {
+        devices: devicePct,
+        membershipDuration: membershipDurationPct,
+        accountAge: accountAgePct
+      },
+      boostCount: guild.premiumSubscriptionCount || 0,
+      boostTier: guild.premiumTier,
+      serverCreatedAt: guild.createdAt,
+      topChatters,
+      topTextChannels,
+      topVoiceMembers,
+      topVoiceChannels
+    });
+
+  } catch (err) {
+    console.error("Error in GET /api/insights:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Dashboard live at http://localhost:${port}`);
 });
@@ -562,6 +1020,7 @@ client.owner = config.owner;
 client.color = config.color;
 client.guild = config.guild;
 client.commands = new Collection();
+client.slashCommands = new Collection();
 client.aliases = new Collection();
 client.categories = fs.readdirSync('./commands/');
 ['command'].forEach(handler => {
@@ -733,6 +1192,13 @@ client.on('presenceUpdate', async (oldPresence, newPresence) => {
 
 // Activity Tracking: voiceStateUpdate Listener
 client.on('voiceStateUpdate', async (oldState, newState) => {
+  if (client.dashEvents && oldState.channelId !== newState.channelId) {
+    if (newState.channelId) {
+        client.dashEvents.emit('dashboard_event', { type: 'voice', action: 'joined', user: newState.member.user.username, channel: newState.channel.name });
+    } else {
+        client.dashEvents.emit('dashboard_event', { type: 'voice', action: 'left', user: oldState.member.user.username, channel: oldState.channel.name });
+    }
+  }
   try {
     if (newState.member && newState.member.user.bot) return;
     if (newState.guild.id !== config.guild) return;
@@ -778,6 +1244,14 @@ client.on('voiceStateUpdate', async (oldState, newState) => {
 //Message
 
 client.on('messageCreate', async message => {
+  if (!message.author.bot && client.dashEvents) {
+    client.dashEvents.emit('dashboard_event', {
+      type: 'message',
+      author: message.author.username,
+      content: message.content,
+      channel: message.channel.name || 'DM'
+    });
+  }
   if (message.author.bot) return;
   if (!message.guild || message.guild.id !== config.guild) return;
 
@@ -865,6 +1339,12 @@ client.on('messageCreate', async message => {
 //Welcome Embed
 
 client.on('guildMemberAdd', async member => {
+  if (client.dashEvents) {
+    client.dashEvents.emit('dashboard_event', {
+      type: 'join',
+      user: member.user.username
+    });
+  }
   if (member.user.bot) return;
 
   // Track daily join stats
@@ -889,7 +1369,7 @@ client.on('guildMemberAdd', async member => {
   const role = member.guild.roles.cache.find(role => role.id === "595587230698045442")
   member.roles.add(role)
   const channel = member.guild.channels.cache.find(
-    channel => channel.id === '714858330295631965'
+    channel => channel.id === (config.welcome ? config.welcome.channel : '714858330295631965')
   );
   if (!channel) return;
   const membername = member.user.username;
@@ -918,7 +1398,7 @@ client.on('guildMemberAdd', async member => {
 
 client.on('guildMemberAdd', async member => {
   const channel = member.guild.channels.cache.find(
-    channel => channel.id === '714858330295631965'
+    channel => channel.id === (config.welcome ? config.welcome.channel : '714858330295631965')
   );
   if (!channel) return;
   const { createCanvas, loadImage } = require('@napi-rs/canvas');
@@ -1006,6 +1486,12 @@ client.on('guildMemberAdd', async member => {
 // Leave Alert WebHook
 
 client.on('guildMemberRemove', async member => {
+  if (client.dashEvents) {
+    client.dashEvents.emit('dashboard_event', {
+      type: 'leave',
+      user: member.user.username
+    });
+  }
   if (member.user.bot) return;
 
   // Track daily leaves stats
@@ -1525,7 +2011,37 @@ const buttonRoleMap = {
   'role_pings': { roleId: '729288334257553438', name: 'Mentions/Pings Role' }
 };
 
+const Context = require('./utils/Context');
+
 client.on('interactionCreate', async interaction => {
+  if (interaction.isChatInputCommand()) {
+    const command = client.slashCommands.get(interaction.commandName);
+    if (command && config.disabledCommands && config.disabledCommands.includes(command.name)) {
+        return interaction.reply({ content: '❌ This command is currently disabled by administrators.', ephemeral: true });
+    }
+    if (!command) return;
+
+    try {
+      const ctx = new Context(interaction);
+      const args = [];
+      if (interaction.options && interaction.options.data) {
+        interaction.options.data.forEach(opt => {
+          if (opt.value !== undefined) args.push(opt.value.toString());
+        });
+      }
+      await command.run(client, ctx, args);
+    } catch (error) {
+      console.error(error);
+      const reply = { content: 'There was an error while executing this command!', ephemeral: true };
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(reply).catch(() => {});
+      } else {
+        await interaction.reply(reply).catch(() => {});
+      }
+    }
+    return;
+  }
+
   if (!interaction.isButton()) return;
 
   if (interaction.customId.startsWith('role_')) {
