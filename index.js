@@ -46,7 +46,6 @@ const { promisify } = require('util');
 const wait = promisify(setTimeout);
 const { Player } = require('discord-player');
 
-const fetch = require("node-fetch");
 const Levels = require('discord-xp');
 const mongoose = require('mongoose');
 

@@ -1,4 +1,3 @@
-const fetch = require('node-fetch')
 const { sendError } = require('../../utils/errorEmbed')
 
 async function twitchUserInfo(username, callback) {

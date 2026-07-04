@@ -28,7 +28,6 @@
     "moment": "^2.29.4",
     "mongodb": "^6.0.0",
     "mongoose": "^8.0.0",
-    "node-fetch": "^2.7.0",
     "node-superfetch": "^0.1.11",
     "opusscript": "^0.0.8",
     "request": "^2.88.2",

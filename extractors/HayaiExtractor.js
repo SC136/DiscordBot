@@ -1,5 +1,4 @@
 const { BaseExtractor, Track, Playlist } = require('discord-player');
-const fetch = require('node-fetch');
 
 class HayaiExtractor extends BaseExtractor {
     static identifier = 'HayaiExtractor';

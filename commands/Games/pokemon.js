@@ -1,5 +1,4 @@
 const { EmbedBuilder } = require('discord.js');
-const fetch = require('node-fetch');
 const Levels = require('discord-xp');
 const { sendError } = require('../../utils/errorEmbed');
 

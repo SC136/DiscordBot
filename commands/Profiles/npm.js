@@ -1,5 +1,4 @@
 const { EmbedBuilder } = require('discord.js');
-const fetch = require('node-fetch');
 const { sendError } = require('../../utils/errorEmbed');
 
 module.exports = {
