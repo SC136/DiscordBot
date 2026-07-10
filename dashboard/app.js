@@ -174,6 +174,12 @@ function fetchStats() {
     document.getElementById('statOnline').textContent = (data.onlineCount||0).toLocaleString();
     document.getElementById('statChannels').textContent = (data.channelCount||0).toLocaleString();
     document.getElementById('statUptime').textContent = formatUptime(data.uptimeMs||0);
+    
+    if (data.health) {
+      document.getElementById('statMemory').textContent = `${data.health.ramRSS || 0} MB`;
+      document.getElementById('statPing').textContent = `${data.health.ping !== undefined ? data.health.ping : 0} ms`;
+      document.getElementById('statCpu').textContent = `${data.health.cpuLoad || 0}%`;
+    }
   }).catch(console.error);
 }
 

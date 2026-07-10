@@ -143,8 +143,22 @@ function dashAuth(req, res, next) {
 // GET /api/stats — Server statistics
 app.get('/api/stats', dashAuth, (req, res) => {
   try {
+    const os = require('os');
+    const memory = process.memoryUsage();
+    const ramRSS = parseFloat((memory.rss / 1024 / 1024).toFixed(1));
+    const ramHeap = parseFloat((memory.heapUsed / 1024 / 1024).toFixed(1));
+    const cpuLoad = parseFloat(os.loadavg()[0].toFixed(2));
+    const ping = client.ws.ping;
+
     const guild = client.guilds.cache.get(config.guild);
-    if (!guild) return res.json({ error: 'Guild not found', memberCount: 0, onlineCount: 0, channelCount: 0, uptimeMs: client.uptime || 0 });
+    if (!guild) return res.json({ 
+      error: 'Guild not found', 
+      memberCount: 0, 
+      onlineCount: 0, 
+      channelCount: 0, 
+      uptimeMs: client.uptime || 0,
+      health: { ramRSS, ramHeap, cpuLoad, ping }
+    });
 
     const onlineCount = guild.members.cache.filter(m => m.presence && m.presence.status !== 'offline').size;
     res.json({
@@ -154,7 +168,13 @@ app.get('/api/stats', dashAuth, (req, res) => {
       onlineCount: onlineCount,
       channelCount: guild.channels.cache.size,
       roleCount: guild.roles.cache.size,
-      uptimeMs: client.uptime || 0
+      uptimeMs: client.uptime || 0,
+      health: {
+        ramRSS,
+        ramHeap,
+        cpuLoad,
+        ping
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1063,24 +1083,53 @@ client.on('ready', () => {
   console.log(`${client.user.username} ✅`);
 });
 
-// Join VC On Ready (Commented out because v12 join() is unsupported in v14)
-/*
+// Join VC On Ready using @discordjs/voice
 client.on("ready", async () => {
   const channelId = '708701200928997467';
-  const joinvc = client.channels.cache.get(channelId);
-  if (joinvc) {
+  
+  async function connectToVoice() {
+    const joinvc = client.channels.cache.get(channelId);
+    if (!joinvc) {
+      console.log(`Voice channel ${channelId} not found in cache.`);
+      return;
+    }
+    
     try {
       console.log(`Attempting to join voice channel: ${joinvc.name || channelId}...`);
-      const connection = await joinvc.join();
+      const { joinVoiceChannel, VoiceConnectionStatus, entersState } = require('@discordjs/voice');
+      
+      const connection = joinVoiceChannel({
+        channelId: joinvc.id,
+        guildId: joinvc.guild.id,
+        adapterCreator: joinvc.guild.voiceAdapterCreator,
+      });
+
+      connection.on(VoiceConnectionStatus.Disconnected, async () => {
+        try {
+          console.log(`Voice connection temporarily disconnected. Attempting automatic reconnection...`);
+          await Promise.race([
+            entersState(connection, VoiceConnectionStatus.Signalling, 5000),
+            entersState(connection, VoiceConnectionStatus.Connecting, 5000),
+          ]);
+        } catch (error) {
+          console.warn(`Voice connection disconnected permanently. Retrying connection in 5 seconds...`);
+          try {
+            connection.destroy();
+          } catch (e) {}
+          setTimeout(connectToVoice, 5000);
+        }
+      });
+
       console.log(`Successfully joined voice channel: ${joinvc.name || channelId}`);
     } catch (err) {
       console.error(`Failed to join voice channel ${channelId}:`, err.message);
+      // Retry in 10s if initial join fails completely
+      setTimeout(connectToVoice, 10000);
     }
-  } else {
-    console.log(`Voice channel ${channelId} not found in cache.`);
   }
+
+  connectToVoice();
 });
-*/
 
 // Activity Tracking Startup Initialization
 client.on('ready', async () => {
