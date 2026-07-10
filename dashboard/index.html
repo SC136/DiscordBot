@@ -43,6 +43,7 @@
       <div class="nav-item" onclick="navigate('engagement', this)">💬 Engagement</div>
       <div class="nav-item" onclick="navigate('audience', this)">🌍 Audience</div>
       <div class="nav-item" onclick="navigate('leaderboard', this)">🏆 XP Leaderboard</div>
+      <div class="nav-item" onclick="navigate('invite-leaderboard', this)">🔗 Invite Leaderboard</div>
       <div class="nav-item" onclick="navigate('activity', this)">🎮 Activity</div>
       <div class="nav-item" onclick="navigate('members', this)">👥 Members</div>
       <div class="nav-item" onclick="navigate('audit', this)">📋 Audit Logs</div>
@@ -457,6 +458,17 @@
           <table class="lb-table">
             <thead><tr><th>#</th><th>User</th><th>Level</th><th>XP</th><th>Progress</th></tr></thead>
             <tbody id="lbBody"><tr><td colspan="5" class="placeholder-text">Awaiting data…</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ═══ INVITE LEADERBOARD ═══ -->
+      <section id="invite-leaderboard" class="view-section">
+        <div class="section-header"><h2>Invite <em>Leaderboard</em></h2></div>
+        <div class="glass-panel">
+          <table class="lb-table">
+            <thead><tr><th>#</th><th>User</th><th>Total Invites</th></tr></thead>
+            <tbody id="inviteLbBody"><tr><td colspan="3" class="placeholder-text">Awaiting data…</td></tr></tbody>
           </table>
         </div>
       </section>

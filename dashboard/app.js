@@ -79,6 +79,7 @@ function navigate(viewId, element) {
   else if (viewId === 'engagement') loadEngagement();
   else if (viewId === 'audience') loadAudience();
   else if (viewId === 'leaderboard') fetchLeaderboard();
+  else if (viewId === 'invite-leaderboard') fetchInviteLeaderboard();
   else if (viewId === 'activity') { fetchActivity(); fetchGameLeaderboard(); }
   else if (viewId === 'members') loadMembers();
   else if (viewId === 'audit') loadAudit();
@@ -613,6 +614,38 @@ function fetchLeaderboard() {
       return '<tr><td><span class="rank-badge '+rc+'">'+rank+'</span></td><td class="lb-user">'+escapeHtml(u.username||u.userID)+'</td><td class="lb-level">'+u.level+'</td><td>'+u.xp.toLocaleString()+'</td><td style="min-width:110px"><div class="xp-bar-track"><div class="xp-bar-fill" style="width:'+pct+'%"></div></div></td></tr>';
     }).join('');
   }).catch(() => { tbody.innerHTML = '<tr><td colspan="5" class="placeholder-text" style="color:var(--danger)">Failed to load.</td></tr>'; });
+}
+
+// ══════════════════════════════════════
+//  INVITE LEADERBOARD
+// ══════════════════════════════════════
+function fetchInviteLeaderboard() {
+  const tbody = document.getElementById('inviteLbBody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text">Loading invite leaderboard...</td></tr>';
+  
+  fetch('/api/invite-leaderboard?key=' + encodeURIComponent(dashKey))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text">No invites tracked yet.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = data.map((u, i) => {
+        const rank = i + 1;
+        const rc = rank <= 3 ? 'rank-' + rank : 'rank-default';
+        const av = u.avatar ? '<img class="player-avatar" src="'+u.avatar+'" style="width: 28px; height: 28px; border-radius: 50%; vertical-align: middle; margin-right: 8px;">' : '';
+        return '<tr>' +
+          '<td><span class="rank-badge '+rc+'">'+rank+'</span></td>' +
+          '<td class="lb-user">' + av + escapeHtml(u.username) + '</td>' +
+          '<td>' + u.uses.toLocaleString() + ' uses</td>' +
+        '</tr>';
+      }).join('');
+    })
+    .catch(() => {
+      tbody.innerHTML = '<tr><td colspan="3" class="placeholder-text" style="color:var(--danger)">Failed to load.</td></tr>';
+    });
 }
 
 // ══════════════════════════════════════

@@ -12,7 +12,6 @@ class Context {
         this.id = interaction.id;
         this.author = interaction.user;
         this.member = interaction.member;
-        this.channel = interaction.channel;
         this.guild = interaction.guild;
         this.createdAt = interaction.createdAt;
         this.createdTimestamp = interaction.createdTimestamp;
@@ -25,7 +24,18 @@ class Context {
             members: interaction.options?.resolved?.members || new Map()
         };
         
-        // Add a fake channel send typing method since many commands use message.channel.sendTyping()
+        // Shallow copy channel to avoid mutating client cache
+        this.channel = Object.create(interaction.channel);
+        
+        const originalSend = interaction.channel.send.bind(interaction.channel);
+        this.channel.send = async (options) => {
+            if (!this.interaction.deferred && !this.interaction.replied) {
+                return await this.reply(options);
+            } else {
+                return await this.reply(options).catch(() => originalSend(options));
+            }
+        };
+
         this.channel.sendTyping = async () => {
             if (!this.interaction.deferred && !this.interaction.replied) {
                 await this.interaction.deferReply().catch(() => {});
@@ -34,7 +44,7 @@ class Context {
     }
 
     /**
-     * Maps message.reply() to interaction.reply()
+     * Maps message.reply() to interaction.reply()/editReply()/followUp()
      * Automatically handles deferred and already replied states.
      */
     async reply(options) {
@@ -43,8 +53,10 @@ class Context {
         }
         options.fetchReply = true;
         
-        if (this.interaction.deferred || this.interaction.replied) {
+        if (this.interaction.replied) {
             return await this.interaction.followUp(options);
+        } else if (this.interaction.deferred) {
+            return await this.interaction.editReply(options);
         } else {
             return await this.interaction.reply(options);
         }

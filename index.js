@@ -44,7 +44,6 @@ const prefix = config.prefix;
 const token = process.env.TOKEN;
 const { promisify } = require('util');
 const wait = promisify(setTimeout);
-const { Player } = require('discord-player');
 
 const Levels = require('discord-xp');
 const mongoose = require('mongoose');
@@ -60,41 +59,7 @@ if (process.env.MONGO_URI) {
   console.warn("WARNING: MONGO_URI is not defined in .env. Levels (discord-xp) commands will be disabled.");
 }
 
-if (!process.env.HAYAI_MUSIC_API_KEY) {
-  console.warn("WARNING: HAYAI_MUSIC_API_KEY is not defined in .env. Music features will fail.");
-}
 
-// Initialize Discord Player
-const player = new Player(client);
-
-const HayaiExtractor = require('./extractors/HayaiExtractor');
-
-// Load custom HayaiExtractor for all music playing
-async function initPlayer() {
-  await player.extractors.register(HayaiExtractor, {});
-}
-initPlayer().catch(err => console.error("Failed to initialize discord-player extractors:", err));
-
-// Register player event handlers
-player.events.on('playerStart', (queue, track) => {
-  if (queue.metadata && queue.metadata.channel) {
-    queue.metadata.channel.send(`🎵 Now playing: **${track.title}** by **${track.author}**`);
-  }
-});
-
-player.events.on('audioTrackAdd', (queue, track) => {
-  if (queue.metadata && queue.metadata.channel) {
-    queue.metadata.channel.send(`➕ Track **${track.title}** queued!`);
-  }
-});
-
-player.events.on('error', (queue, error) => {
-  console.error(`[Player Error] ${error.message}`);
-});
-
-player.events.on('playerError', (queue, error) => {
-  console.error(`[Player Connection Error] ${error.message}`);
-});
 
 // Activity Stats Schema
 const activityStatsSchema = new mongoose.Schema({
@@ -142,6 +107,16 @@ const memberVoiceStatsSchema = new mongoose.Schema({
 });
 memberVoiceStatsSchema.index({ date: 1, guildId: 1, userId: 1, channelId: 1 }, { unique: true });
 const MemberVoiceStats = mongoose.model('MemberVoiceStats', memberVoiceStatsSchema);
+
+// Invite Map Schema: Tracks who invited whom
+const inviteMapSchema = new mongoose.Schema({
+  userId: { type: String, required: true, unique: true },
+  guildId: { type: String, required: true },
+  inviterId: { type: String, required: true },
+  inviterTag: { type: String },
+  code: { type: String }
+});
+const InviteMap = mongoose.model('InviteMap', inviteMapSchema);
 
 // Transient in-memory map to track voice call sessions
 client.voiceSessions = new Map();
@@ -690,6 +665,56 @@ app.post('/api/commands/toggle', dashAuth, (req, res) => {
   fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
   config.disabledCommands = cfg.disabledCommands; // update in-memory
   res.json({ success: true, disabledCommands: cfg.disabledCommands });
+});
+
+app.get('/api/invite-leaderboard', dashAuth, async (req, res) => {
+  try {
+    const guild = client.guilds.cache.get(config.guild);
+    if (!guild) return res.json([]);
+
+    const invites = await guild.invites.fetch();
+    const inviteCounter = {};
+
+    invites.forEach((invite) => {
+      const { uses, inviter } = invite;
+      if (!inviter) return;
+      
+      const userId = inviter.id;
+      const username = inviter.username;
+      const avatar = inviter.displayAvatarURL({ size: 64 });
+      
+      if (!inviteCounter[userId]) {
+        inviteCounter[userId] = {
+          username,
+          avatar,
+          uses: 0
+        };
+      }
+      inviteCounter[userId].uses += uses;
+    });
+
+    const sortedInvites = Object.entries(inviteCounter)
+      .map(([userId, info]) => ({
+        userId,
+        username: info.username,
+        avatar: info.avatar,
+        uses: info.uses
+      }))
+      .sort((a, b) => b.uses - a.uses);
+
+    const formatted = sortedInvites.map((item, index) => ({
+      rank: index + 1,
+      userId: item.userId,
+      username: item.username,
+      avatar: item.avatar,
+      uses: item.uses
+    }));
+
+    res.json(formatted);
+  } catch (err) {
+    console.error('Error fetching invite leaderboard:', err);
+    res.status(500).json({ error: 'Failed to fetch invite leaderboard' });
+  }
 });
 
 app.get('/api/welcome', dashAuth, (req, res) => {
@@ -1347,6 +1372,8 @@ client.on('guildMemberAdd', async member => {
   }
   if (member.user.bot) return;
 
+
+
   // Track daily join stats
   if (member.guild.id === config.guild) {
     try {
@@ -1519,10 +1546,34 @@ client.on('guildMemberRemove', async member => {
   if (!channel) return;
   const hook = new WebhookClient({ id: '885466185301368902', token: 'XmYGYuvITPpIB3xHcfv7iulqDdZa22PbSSR3bMlfKtrMXsEU7FCFrQ5O-pB_B7wi8vHC' })
 
-  const userLink = `[${member.user.username}](<https://discord.com/users/${member.user.id}> "${member.user.tag}")`
+  const userLink = `[${member.user.username}](<https://discord.com/users/${member.user.id}> "${member.user.tag}")`;
 
-  hook.send(`Damn ${userLink} left the server!`)
-
+  // Look up inviter from MongoDB
+  try {
+    const inviteRecord = await InviteMap.findOne({ userId: member.id, guildId: member.guild.id });
+    if (inviteRecord) {
+      let inviterText = 'Unknown';
+      try {
+        const inviterUser = await client.users.fetch(inviteRecord.inviterId);
+        if (inviterUser) {
+          inviterText = `[${inviterUser.username}](<https://discord.com/users/${inviterUser.id}> "${inviterUser.tag}")`;
+        }
+      } catch (userErr) {
+        if (inviteRecord.inviterTag) {
+          inviterText = `[${inviteRecord.inviterTag}](<https://discord.com/users/${inviteRecord.inviterId}>)`;
+        }
+      }
+      hook.send(`Damn ${userLink} left the server! Was invited by ${inviterText}`);
+      
+      // Clean up the DB record
+      await InviteMap.deleteOne({ _id: inviteRecord._id }).catch(() => {});
+    } else {
+      hook.send(`Damn ${userLink} left the server!`);
+    }
+  } catch (err) {
+    console.error('Error looking up leaving user inviter:', err);
+    hook.send(`Damn ${userLink} left the server!`);
+  }
 });
 
 //Bye-Bye Embed
@@ -1621,18 +1672,78 @@ client.on('ready', async () => {
 client.on('guildMemberAdd', async (member) => {
   if (member.guild.id !== client.guild) return;
 
-  member.guild.invites.fetch().then(gInvites => {
-    const invite = gInvites.find((inv) => invites.get(inv.code).uses < inv.uses);
+  member.guild.invites.fetch().then(async (gInvites) => {
+    // Find invite that had its uses incremented
+    const invite = gInvites.find((inv) => invites && invites.get(inv.code) && invites.get(inv.code).uses < inv.uses);
+    
+    // Update cached invites list
+    invites = gInvites;
 
     const channel = member.guild.channels.cache.get('793694044521103370');
+    
+    let inviterText = 'Unknown';
+    let embedInviter = 'Unknown';
+    let embedCode = 'Unknown';
+
+    if (invite) {
+      embedCode = invite.code;
+      if (invite.inviter) {
+        embedInviter = invite.inviter;
+        inviterText = `[${invite.inviter.username}](<https://discord.com/users/${invite.inviter.id}> "${invite.inviter.tag}")`;
+        
+        // Save invite relationship to MongoDB
+        try {
+          await InviteMap.updateOne(
+            { userId: member.id, guildId: member.guild.id },
+            { 
+              $set: { 
+                inviterId: invite.inviter.id, 
+                inviterTag: invite.inviter.tag || invite.inviter.username,
+                code: invite.code 
+              } 
+            },
+            { upsert: true }
+          );
+        } catch (dbErr) {
+          console.error('Error saving InviteMap to database:', dbErr);
+        }
+      }
+    }
 
     const embed = new EmbedBuilder()
-      .setDescription(`${member} Joined, Invited By ${invite.inviter} And The Code Was \`${invite.code}\``)
+      .setDescription(`${member} Joined, Invited By ${embedInviter} And The Code Was \`${embedCode}\``)
       .setColor(client.color);
 
-    channel.send({ embeds: [embed] });
-  })
-})
+    if (channel) {
+      channel.send({ embeds: [embed] }).catch(() => {});
+    }
+
+    // Send Webhook Notifier with Inviter Info
+    try {
+      const welcomeHook = new WebhookClient({
+        id: '1525163185576087804',
+        token: '3Y61hy27nQTVDaX150-7ImhcmGkjz2T4E9F8iiuI8D1kTMj53xWWhbhcNTAQHZW8iDuU'
+      });
+      const userLink = `[${member.user.username}](<https://discord.com/users/${member.user.id}> "${member.user.tag}")`;
+      await welcomeHook.send(`${userLink} joined the server, invited by ${inviterText}`);
+    } catch (err) {
+      console.error('Error sending welcome webhook:', err);
+    }
+  }).catch(async (err) => {
+    console.error('Error handling invites in guildMemberAdd:', err);
+    // Fallback if invite fetch fails or errors out
+    try {
+      const welcomeHook = new WebhookClient({
+        id: '1525163185576087804',
+        token: '3Y61hy27nQTVDaX150-7ImhcmGkjz2T4E9F8iiuI8D1kTMj53xWWhbhcNTAQHZW8iDuU'
+      });
+      const userLink = `[${member.user.username}](<https://discord.com/users/${member.user.id}> "${member.user.tag}")`;
+      await welcomeHook.send(`${userLink} joined the server, invited by Unknown`);
+    } catch (wErr) {
+      console.error('Error sending welcome webhook fallback:', wErr);
+    }
+  });
+});
 
 //Anti AD
 
