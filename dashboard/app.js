@@ -2,6 +2,8 @@
 let dashKey = '';
 let currentDays = 7;
 let insightsData = null;
+let activeMessagesTab = 'chatters';
+let activeVoiceTab = 'voiceMembers';
 
 // Global Chart Instances
 let charts = {
