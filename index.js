@@ -796,17 +796,64 @@ app.get('/api/insights', dashAuth, async (req, res) => {
           date: dateStr,
           joins: dailyStatsMap[dateStr].joins || 0,
           leaves: dailyStatsMap[dateStr].leaves || 0,
-          memberCount: runningMemberCount
+          memberCount: runningMemberCount,
+          messages: 0,
+          voiceHours: 0
         });
       } else {
         dailyStats.push({
           date: dateStr,
           joins: 0,
           leaves: 0,
-          memberCount: runningMemberCount
+          memberCount: runningMemberCount,
+          messages: 0,
+          voiceHours: 0
         });
       }
     }
+
+    // Fetch daily message volume and merge into dailyStats
+    const messageDaily = await MemberMessageStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
+      { $group: { _id: "$date", count: { $sum: "$messageCount" } } }
+    ]);
+    const messageDailyMap = {};
+    messageDaily.forEach(s => {
+      const dateStr = new Date(s._id).toISOString().split('T')[0];
+      messageDailyMap[dateStr] = s.count;
+    });
+
+    // Fetch daily voice hours and merge into dailyStats
+    const voiceDaily = await MemberVoiceStats.aggregate([
+      { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
+      { $group: { _id: "$date", duration: { $sum: "$voiceDurationMs" } } }
+    ]);
+    const voiceDailyMap = {};
+    voiceDaily.forEach(s => {
+      const dateStr = new Date(s._id).toISOString().split('T')[0];
+      voiceDailyMap[dateStr] = s.duration;
+    });
+
+    // Calculate live voice sessions for today
+    const liveVoiceMap = {};
+    client.voiceSessions.forEach((session, userId) => {
+      const elapsed = Date.now() - session.joinTime;
+      if (!liveVoiceMap[userId]) {
+        liveVoiceMap[userId] = { channelId: session.channelId, elapsedMs: 0 };
+      }
+      liveVoiceMap[userId].elapsedMs += elapsed;
+    });
+
+    dailyStats.forEach(stat => {
+      stat.messages = messageDailyMap[stat.date] || 0;
+      let voiceMs = voiceDailyMap[stat.date] || 0;
+      if (stat.date === today.toISOString().split('T')[0]) {
+        Object.values(liveVoiceMap).forEach(session => {
+          voiceMs += session.elapsedMs;
+        });
+      }
+      stat.voiceHours = parseFloat((voiceMs / 3600000).toFixed(2));
+    });
 
     // 2. Compute New Members and New Communicators
     const now = Date.now();

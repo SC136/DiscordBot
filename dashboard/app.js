@@ -369,7 +369,7 @@ async function loadEngagement() {
       data: {
         labels,
         datasets: [
-          { label: 'Messages Sent', type: 'bar', data: (data.dailyStats || []).map(d => d.joins * 20), backgroundColor: '#D4845A', yAxisID: 'y' },
+          { label: 'Messages Sent', type: 'bar', data: (data.dailyStats || []).map(d => d.messages || 0), backgroundColor: '#D4845A', yAxisID: 'y' },
           { label: 'Avg Messages per Communicator', type: 'line', data: (data.dailyStats || []).map(() => 10 + Math.random() * 15), borderColor: '#E8C87A', tension: 0.2, yAxisID: 'y1' }
         ]
       },
@@ -448,7 +448,7 @@ async function loadEngagement() {
         <tr>
           <td>${ch.name}</td>
           <td>${ch.speakers}</td>
-          <td>${ch.minutes} min</td>
+          <td>${formatDuration(ch.minutes * 60000)}</td>
         </tr>
       `).join('');
     }
