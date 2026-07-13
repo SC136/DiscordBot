@@ -1755,25 +1755,56 @@ client.on('guildMemberRemove', member => {
 
 //Invite Tracking System
 
-let invites;
+// Store invite uses as a plain Map<code, uses> for reliable comparison
+let cachedInviteUses = new Map();
 
 client.on('ready', async () => {
   await wait(2000);
 
-  client.guilds.cache.get(client.guild).invites.fetch().then(inv => {
-    invites = inv;
-  })
-})
+  try {
+    const guildInvites = await client.guilds.cache.get(client.guild).invites.fetch();
+    guildInvites.forEach(inv => {
+      cachedInviteUses.set(inv.code, inv.uses);
+    });
+    console.log(`Cached ${cachedInviteUses.size} invite codes for tracking ✅`);
+  } catch (err) {
+    console.error('Failed to cache invites on ready:', err.message);
+  }
+});
+
+client.on('inviteCreate', (invite) => {
+  if (invite.guild.id !== client.guild) return;
+  cachedInviteUses.set(invite.code, invite.uses);
+});
+
+client.on('inviteDelete', (invite) => {
+  if (invite.guild.id !== client.guild) return;
+  cachedInviteUses.delete(invite.code);
+});
 
 client.on('guildMemberAdd', async (member) => {
   if (member.guild.id !== client.guild) return;
 
-  member.guild.invites.fetch().then(async (gInvites) => {
-    // Find invite that had its uses incremented
-    const invite = gInvites.find((inv) => invites && invites.get(inv.code) && invites.get(inv.code).uses < inv.uses);
-    
-    // Update cached invites list
-    invites = gInvites;
+  try {
+    const gInvites = await member.guild.invites.fetch();
+
+    // Find the invite whose uses increased, or a brand new invite not in cache
+    let invite = null;
+    gInvites.forEach(inv => {
+      const cachedUses = cachedInviteUses.get(inv.code);
+      if (cachedUses !== undefined && cachedUses < inv.uses) {
+        invite = inv;
+      } else if (cachedUses === undefined && inv.uses > 0) {
+        // New invite not in cache — likely created while bot was down
+        invite = inv;
+      }
+    });
+
+    // Update cache with fresh data
+    cachedInviteUses.clear();
+    gInvites.forEach(inv => {
+      cachedInviteUses.set(inv.code, inv.uses);
+    });
 
     const channel = member.guild.channels.cache.get('793694044521103370');
     
@@ -1825,7 +1856,7 @@ client.on('guildMemberAdd', async (member) => {
     } catch (err) {
       console.error('Error sending welcome webhook:', err);
     }
-  }).catch(async (err) => {
+  } catch (err) {
     console.error('Error handling invites in guildMemberAdd:', err);
     // Fallback if invite fetch fails or errors out
     try {
@@ -1838,7 +1869,7 @@ client.on('guildMemberAdd', async (member) => {
     } catch (wErr) {
       console.error('Error sending welcome webhook fallback:', wErr);
     }
-  });
+  }
 });
 
 //Anti AD
