@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActivityType , SlashCommandBuilder } = require('discord.js');
 const moment = require("moment");
 const { sendError } = require('../../utils/errorEmbed');
+const e = require('../../utils/emojis');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -21,12 +22,12 @@ module.exports = {
 
       // Status indicator
       const statusMap = {
-        online: '🟢 Online',
-        idle: '🟡 Idle',
-        dnd: '🔴 Do Not Disturb',
-        offline: '⚫ Offline'
+        online: `${e.Online} Online`,
+        idle: `${e.Idle} Idle`,
+        dnd: `${e.DND} Do Not Disturb`,
+        offline: `${e.Invisible} Offline`
       };
-      const status = statusMap[user.presence ? user.presence.status : 'offline'] || '⚫ Offline';
+      const status = statusMap[user.presence ? user.presence.status : 'offline'] || `${e.Invisible} Offline`;
 
       // Activities details
       let activityText = '*None*';
@@ -49,7 +50,7 @@ module.exports = {
       const rolesDisplay = roles.length > 0 ? roles.join(', ') : 'None';
 
       const embed = new EmbedBuilder()
-        .setTitle(`👤 User Information — ${user.tag}`)
+        .setTitle(`${e.Members} User Information — ${user.tag}`)
         .setColor(member.displayHexColor || '#5865F2')
         .setThumbnail(user.displayAvatarURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
@@ -57,17 +58,17 @@ module.exports = {
         
         .addFields([
           {
-            name: '📌 User Details',
+            name: `${e.Info} User Details`,
             value: [
               `**Username:** ${user.username}`,
               `**Discriminator:** #${user.discriminator}`,
               `**User ID:** \`${user.id}\``,
-              `**Is Bot:** ${user.bot ? '✅ Yes' : '❌ No'}`
+              `**Is Bot:** ${user.bot ? `${e.Bot} Yes` : `${e.CrossX} No`}`
             ].join('\n'),
             inline: false
           },
           {
-            name: '🎮 Presence & Activity',
+            name: `${e.Fun} Presence & Activity`,
             value: [
               `**Status:** ${status}`,
               `**Current Activity:**\n${activityText}`
@@ -75,7 +76,7 @@ module.exports = {
             inline: false
           },
           {
-            name: '📅 Dates & Timestamps',
+            name: `${e.Timer} Dates & Timestamps`,
             value: [
               `**Account Created:** ${moment(user.createdAt).format('MMMM Do YYYY, h:mm a')} (${moment(user.createdAt).fromNow()})`,
               `**Joined Server:** ${moment(member.joinedAt).format('MMMM Do YYYY, h:mm a')} (${moment(member.joinedAt).fromNow()})`
@@ -83,7 +84,7 @@ module.exports = {
             inline: false
           },
           {
-            name: `🛡️ Roles [${roles.length}]`,
+            name: `${e.Role} Roles [${roles.length}]`,
             value: rolesDisplay,
             inline: false
           }

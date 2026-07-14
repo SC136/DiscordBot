@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
+const e = require('./emojis');
 
 /**
  * Sends a consistent, themed error embed to a Discord channel.
@@ -18,7 +19,7 @@ function sendError(message, { title = 'Something went wrong', description, comma
 
   const embed = new EmbedBuilder()
     .setColor(0xED4245) // Discord's standard red
-    .setTitle(`❌  ${title}`)
+    .setTitle(`${e.Error}  ${title}`)
     .setTimestamp();
 
   if (description) {

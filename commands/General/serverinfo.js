@@ -1,6 +1,7 @@
 const { EmbedBuilder, ChannelType , SlashCommandBuilder } = require('discord.js');
 const moment = require("moment");
 const { sendError } = require('../../utils/errorEmbed');
+const e = require('../../utils/emojis');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -34,7 +35,7 @@ module.exports = {
       const boostCount = guild.premiumSubscriptionCount;
 
       const embed = new EmbedBuilder()
-        .setTitle(`🏰 Server Information — ${guild.name}`)
+        .setTitle(`Server Information — ${guild.name}`)
         .setColor('#5865F2')
         .setThumbnail(guild.iconURL({ forceStatic: false, size: 256 }))
         .setTimestamp()
@@ -42,38 +43,38 @@ module.exports = {
         
         .addFields([
           {
-            name: '📌 General Info',
+            name: `${e.Info} General Info`,
             value: [
               `**Name:** ${guild.name}`,
-              `**Server ID:** ${guild.id}`,
-              `**Owner:** <@${guild.ownerId}> (ID: \`${guild.ownerId}\`)`,
+              `${e.ID} **Server ID:** ${guild.id}`,
+              `${e.Owner} **Owner:** <@${guild.ownerId}> (ID: \`${guild.ownerId}\`)`,
               `**Created On:** ${moment(guild.createdAt).format('MMMM Do YYYY, h:mm a')} (${moment(guild.createdAt).fromNow()})`
             ].join('\n'),
             inline: false
           },
           {
-            name: '👤 Members Breakdown',
+            name: `${e.Members} Members Breakdown`,
             value: [
               `**Total Members:** \`${totalMembers.toLocaleString()}\``,
               `• Humans: \`${humansCount.toLocaleString()}\``,
               `• Bots: \`${botsCount.toLocaleString()}\``,
-              `**Status:** 🟢 \`${onlineCount}\` | 🟡 \`${idleCount}\` | 🔴 \`${dndCount}\` | ⚫ \`${offlineCount}\``
+              `**Status:** ${e.Online} \`${onlineCount}\` | ${e.Idle} \`${idleCount}\` | ${e.DND} \`${dndCount}\` | ${e.Invisible} \`${offlineCount}\``
             ].join('\n'),
             inline: true
           },
           {
-            name: '📁 Channels & Roles',
+            name: `${e.Announcement} Channels & Roles`,
             value: [
               `**Total Channels:** \`${guild.channels.cache.size}\``,
               `• Text: \`${textChannels}\``,
               `• Voice: \`${voiceChannels}\``,
               `• Categories: \`${categoryChannels}\``,
-              `**Roles Count:** \`${guild.roles.cache.size}\``
+              `${e.Role} **Roles Count:** \`${guild.roles.cache.size}\``
             ].join('\n'),
             inline: true
           },
           {
-            name: '⚡ Boost Status',
+            name: `${e.Verified} Boost Status`,
             value: [
               `**Boost Level:** Tier \`${boostLevel}\``,
               `**Boost Count:** \`${boostCount || 0}\` boosts`

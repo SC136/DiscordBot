@@ -1,5 +1,6 @@
 const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 const os = require('os');
+const e = require('../../utils/emojis');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -24,14 +25,14 @@ module.exports = {
     const cpuLoad = os.loadavg()[0].toFixed(2);
 
     const embed = new EmbedBuilder()
-      .setTitle('🤖 Bot System Status')
+      .setTitle(`${e.Settings} Bot System Status`)
       .addFields([
-        { name: '📶 WebSocket Ping', value: `\`${client.ws.ping}ms\``, inline: true },
-        { name: '⏱️ Bot Uptime', value: `\`${days}d ${hours}h ${minutes}m ${seconds}s\``, inline: true },
-        { name: '💾 RAM Usage (RSS)', value: `\`${rss} MB\``, inline: true },
-        { name: '🧠 RAM Usage (Heap)', value: `\`${heapUsed} MB\``, inline: true },
-        { name: '⚙️ CPU Load (1m)', value: `\`${cpuLoad}%\``, inline: true },
-        { name: '🔌 Host Platform', value: `\`${os.platform()} (${os.arch()})\``, inline: true }
+        { name: `${e.Ping} WebSocket Ping`, value: `\`${client.ws.ping}ms\``, inline: true },
+        { name: `${e.Timer} Bot Uptime`, value: `\`${days}d ${hours}h ${minutes}m ${seconds}s\``, inline: true },
+        { name: `${e.Info} RAM Usage (RSS)`, value: `\`${rss} MB\``, inline: true },
+        { name: `${e.Search} RAM Usage (Heap)`, value: `\`${heapUsed} MB\``, inline: true },
+        { name: `${e.Shield} CPU Load (1m)`, value: `\`${cpuLoad}%\``, inline: true },
+        { name: `${e.System} Host Platform`, value: `\`${os.platform()} (${os.arch()})\``, inline: true }
       ])
       .setColor('#0059FF')
       .setTimestamp();

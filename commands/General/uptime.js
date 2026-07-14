@@ -1,4 +1,5 @@
 const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
+const e = require('../../utils/emojis');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -14,9 +15,9 @@ module.exports = {
         let seconds = Math.floor(client.uptime / 1000) % 60;
 
         const embed = new EmbedBuilder()
-        .setTitle('<:SCSmartTechLogo:793665812493893652> My UpTime :')
+        .setTitle(`${e.Timer} My UpTime :`)
         .setDescription('This Is Just That For How Much Time I Was Online Or Up')
-        .addFields({ name: '<a:7908_Cat_laugh_omega:793734088741748746> UpTime', value: `\`\`\`${days}d ${hours}h ${minutes}m ${seconds}s\`\`\`` })
+        .addFields({ name: `${e.Online} UpTime`, value: `\`\`\`${days}d ${hours}h ${minutes}m ${seconds}s\`\`\`` })
         .setColor('#0059FF')
         .setTimestamp()
 
