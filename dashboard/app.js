@@ -86,6 +86,7 @@ function navigate(viewId, element) {
   else if (viewId === 'members') loadMembers();
   else if (viewId === 'audit') loadAudit();
   else if (viewId === 'commands') loadCommands();
+  else if (viewId === 'embed-builder') loadEmbedBuilder();
   else if (viewId === 'config') loadConfig();
 }
 
@@ -894,5 +895,208 @@ function renderVoiceRankings() {
         '<span class="player-time">' + ch.hours.toLocaleString() + ' hrs</span>' +
       '</div>';
     }).join('');
+  }
+}
+
+// ══════════════════════════════════════
+//  EMBED BUILDER (NEW FEATURE)
+// ══════════════════════════════════════
+let isEbListenersBound = false;
+
+async function loadEmbedBuilder() {
+  // Try to load bot profile for preview (username/avatar)
+  try {
+    const res = await fetch('/api/stats?key=' + encodeURIComponent(dashKey));
+    const stats = await res.json();
+    if (stats.botName) {
+      document.getElementById('ebBotName').innerText = stats.botName;
+      if (stats.botAvatar) {
+        const avatarPlaceholder = document.getElementById('ebBotAvatar');
+        if (avatarPlaceholder) {
+          avatarPlaceholder.outerHTML = `<img src="${stats.botAvatar}" id="ebBotAvatar" class="discord-avatar" alt="Avatar">`;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load bot stats for preview:', err);
+  }
+
+  // Bind live preview listeners if not already bound
+  if (!isEbListenersBound) {
+    bindEbListeners();
+    isEbListenersBound = true;
+  }
+
+  // Fetch server channels
+  await fetchChannels();
+}
+
+async function fetchChannels() {
+  const select = document.getElementById('ebChannelSelect');
+  if (!select) return;
+  
+  try {
+    const res = await fetch(`/api/channels?key=${encodeURIComponent(dashKey)}`);
+    if (!res.ok) throw new Error('Failed to fetch channels');
+    const channels = await res.json();
+    
+    if (channels.length === 0) {
+      select.innerHTML = '<option value="">No text channels found</option>';
+    } else {
+      select.innerHTML = channels.map(ch => `<option value="${ch.id}">#${ch.name}</option>`).join('');
+    }
+  } catch (err) {
+    console.error(err);
+    select.innerHTML = '<option value="">Error loading channels</option>';
+  }
+}
+
+function bindEbListeners() {
+  const titleInput = document.getElementById('ebTitle');
+  const descInput = document.getElementById('ebDescription');
+  const colorInput = document.getElementById('ebColor');
+  const colorHexInput = document.getElementById('ebColorHex');
+  const thumbInput = document.getElementById('ebThumbnail');
+  const imgInput = document.getElementById('ebImage');
+  const footerInput = document.getElementById('ebFooter');
+
+  const previewCard = document.getElementById('ebPreviewCard');
+  const previewTitle = document.getElementById('ebPreviewTitle');
+  const previewDesc = document.getElementById('ebPreviewDescription');
+  const previewThumb = document.getElementById('ebPreviewThumbnail');
+  const previewImg = document.getElementById('ebPreviewImage');
+  const previewFooter = document.getElementById('ebPreviewFooter');
+
+  function updatePreview() {
+    // Title
+    if (titleInput.value.trim()) {
+      previewTitle.innerText = titleInput.value;
+      previewTitle.classList.remove('hidden');
+    } else {
+      previewTitle.classList.add('hidden');
+    }
+
+    // Description
+    if (descInput.value.trim()) {
+      let formattedText = escapeHtml(descInput.value)
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/__(.*?)__/g, '<u>$1</u>')
+        .replace(/\n/g, '<br>');
+      previewDesc.innerHTML = formattedText;
+      previewDesc.classList.remove('hidden');
+    } else {
+      previewDesc.classList.add('hidden');
+    }
+
+    // Thumbnail
+    if (thumbInput.value.trim() && (thumbInput.value.startsWith('http://') || thumbInput.value.startsWith('https://'))) {
+      previewThumb.src = thumbInput.value;
+      previewThumb.classList.remove('hidden');
+    } else {
+      previewThumb.classList.add('hidden');
+    }
+
+    // Image
+    if (imgInput.value.trim() && (imgInput.value.startsWith('http://') || imgInput.value.startsWith('https://'))) {
+      previewImg.src = imgInput.value;
+      previewImg.classList.remove('hidden');
+    } else {
+      previewImg.classList.add('hidden');
+    }
+
+    // Footer
+    if (footerInput.value.trim()) {
+      previewFooter.innerText = footerInput.value;
+      previewFooter.classList.remove('hidden');
+    } else {
+      previewFooter.classList.add('hidden');
+    }
+  }
+
+  // Synchronize color picker and hex text input
+  colorInput.addEventListener('input', () => {
+    colorHexInput.value = colorInput.value;
+    previewCard.style.borderLeftColor = colorInput.value;
+  });
+
+  colorHexInput.addEventListener('input', () => {
+    const val = colorHexInput.value.trim();
+    if (/^#[0-9A-F]{6}$/i.test(val)) {
+      colorInput.value = val;
+      previewCard.style.borderLeftColor = val;
+    }
+  });
+
+  // Listeners for updates
+  titleInput.addEventListener('input', updatePreview);
+  descInput.addEventListener('input', updatePreview);
+  thumbInput.addEventListener('input', updatePreview);
+  imgInput.addEventListener('input', updatePreview);
+  footerInput.addEventListener('input', updatePreview);
+
+  // Initialize preview
+  updatePreview();
+}
+
+async function sendEmbed() {
+  const channelId = document.getElementById('ebChannelSelect').value;
+  const title = document.getElementById('ebTitle').value.trim();
+  const description = document.getElementById('ebDescription').value.trim();
+  const color = document.getElementById('ebColorHex').value.trim();
+  const thumbnail = document.getElementById('ebThumbnail').value.trim();
+  const image = document.getElementById('ebImage').value.trim();
+  const footer = document.getElementById('ebFooter').value.trim();
+
+  if (!channelId) {
+    showToast('Please select a target channel', 'error');
+    return;
+  }
+  if (!title && !description) {
+    showToast('Embed must have at least a Title or Description', 'error');
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/send-embed?key=${encodeURIComponent(dashKey)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channelId,
+        title,
+        description,
+        color,
+        thumbnail,
+        image,
+        footer
+      })
+    });
+
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showToast('Embed successfully sent to Discord! 🎉', 'success');
+      // Clear input fields
+      document.getElementById('ebTitle').value = '';
+      document.getElementById('ebDescription').value = '';
+      document.getElementById('ebThumbnail').value = '';
+      document.getElementById('ebImage').value = '';
+      document.getElementById('ebFooter').value = '';
+      
+      // Update preview card
+      document.getElementById('ebPreviewTitle').innerText = 'Embed Title';
+      document.getElementById('ebPreviewDescription').innerText = 'Embed body text (supports markdown)';
+      document.getElementById('ebPreviewTitle').classList.remove('hidden');
+      document.getElementById('ebPreviewDescription').classList.remove('hidden');
+      document.getElementById('ebPreviewThumbnail').classList.add('hidden');
+      document.getElementById('ebPreviewImage').classList.add('hidden');
+      document.getElementById('ebPreviewFooter').classList.add('hidden');
+    } else {
+      showToast(data.error || 'Failed to send embed', 'error');
+    }
+  } catch (err) {
+    console.error(err);
+    showToast('Failed to send request to server', 'error');
   }
 }

@@ -1103,6 +1103,75 @@ app.get('/api/insights', dashAuth, async (req, res) => {
   }
 });
 
+// GET /api/channels - Retrieve text channels
+app.get('/api/channels', dashAuth, async (req, res) => {
+  try {
+    const guild = client.guilds.cache.get(config.guild);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+
+    const textChannels = guild.channels.cache
+      .filter(c => c.type === ChannelType.GuildText)
+      .map(c => ({ id: c.id, name: c.name }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+    res.json(textChannels);
+  } catch (err) {
+    console.error("Error in GET /api/channels:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/send-embed - Send a custom embed to a Discord channel
+app.post('/api/send-embed', dashAuth, async (req, res) => {
+  try {
+    const { channelId, title, description, color, thumbnail, image, footer } = req.body;
+
+    if (!channelId) {
+      return res.status(400).json({ error: 'Missing channelId' });
+    }
+    if (!title && !description) {
+      return res.status(400).json({ error: 'Embed must contain at least a title or description' });
+    }
+
+    const guild = client.guilds.cache.get(config.guild);
+    if (!guild) return res.status(404).json({ error: 'Guild not found' });
+
+    const channel = guild.channels.cache.get(channelId);
+    if (!channel) return res.status(404).json({ error: 'Channel not found' });
+
+    const embed = new EmbedBuilder();
+
+    if (title) embed.setTitle(title);
+    if (description) embed.setDescription(description);
+    if (color) embed.setColor(color);
+
+    if (thumbnail && (thumbnail.startsWith('http://') || thumbnail.startsWith('https://'))) {
+      embed.setThumbnail(thumbnail);
+    }
+    if (image && (image.startsWith('http://') || image.startsWith('https://'))) {
+      embed.setImage(image);
+    }
+    if (footer) {
+      embed.setFooter({ text: footer });
+    }
+
+    await channel.send({ embeds: [embed] });
+
+    if (client.dashEvents) {
+      client.dashEvents.emit('dashboard_event', {
+        type: 'embed_sent',
+        channel: channel.name,
+        title: title || 'No Title'
+      });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error in POST /api/send-embed:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.listen(port, () => {
   console.log(`Dashboard live at http://localhost:${port}`);
 });

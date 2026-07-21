@@ -49,6 +49,7 @@
       <div class="nav-item" onclick="navigate('audit', this)">📋 Audit Logs</div>
       <div class="nav-item" onclick="navigate('commands', this)">⚙️ Commands</div>
       <div class="nav-item" onclick="navigate('livefeed', this)">🔔 Live Feed</div>
+      <div class="nav-item" onclick="navigate('embed-builder', this)">📢 Embed Builder</div>
       <div class="nav-item" onclick="navigate('config', this)">📝 Settings</div>
     </aside>
 
@@ -553,6 +554,81 @@
         <div class="glass-panel" style="padding:0;overflow:hidden">
           <div id="liveFeedTerminal" class="terminal">
             <p class="log-dim">// Listening for events...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ EMBED BUILDER ═══ -->
+      <section id="embed-builder" class="view-section">
+        <div class="section-header">
+          <div class="section-label-text">Interactive tool</div>
+          <h2>Embed <em>Builder</em></h2>
+          <p class="section-sub">Design and send custom styled messages directly to Discord channels.</p>
+        </div>
+        <div class="embed-builder-layout">
+          <div class="glass-panel builder-form-panel" style="padding:2rem">
+            <div class="activity-item-title">Design Embed</div>
+            <div class="config-grid">
+              <div class="form-group">
+                <label>Target Channel</label>
+                <select id="ebChannelSelect" style="background:var(--surface-glass);color:var(--ink);border:1px solid var(--border-glass);padding:0.6rem;border-radius:4px;width:100%">
+                  <option value="">Loading channels...</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Title</label>
+                <input type="text" id="ebTitle" placeholder="Embed Title">
+              </div>
+              <div class="form-group">
+                <label>Description</label>
+                <textarea id="ebDescription" placeholder="Embed body text (supports markdown)" rows="5" style="background:var(--surface-glass);color:var(--ink);border:1px solid var(--border-glass);padding:0.6rem;border-radius:4px;resize:vertical;font-family:inherit"></textarea>
+              </div>
+              <div class="form-group">
+                <label>Embed Color</label>
+                <div style="display:flex; gap:0.5rem; align-items:center">
+                  <input type="color" id="ebColor" value="#0059ff" style="width:40px; height:40px; padding:0; border:none; border-radius:4px; background:none; cursor:pointer">
+                  <input type="text" id="ebColorHex" value="#0059ff" placeholder="#0059ff" style="width:100px">
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Thumbnail URL (Optional)</label>
+                <input type="text" id="ebThumbnail" placeholder="https://example.com/image.png">
+              </div>
+              <div class="form-group">
+                <label>Main Image URL (Optional)</label>
+                <input type="text" id="ebImage" placeholder="https://example.com/image.png">
+              </div>
+              <div class="form-group">
+                <label>Footer Text (Optional)</label>
+                <input type="text" id="ebFooter" placeholder="Footer text">
+              </div>
+              <button class="btn-save" style="margin-top:1rem" onclick="sendEmbed()">Send Embed Message ↗</button>
+            </div>
+          </div>
+
+          <div class="builder-preview-panel">
+            <div class="section-label">Live Discord Preview</div>
+            <div class="discord-preview-container">
+              <div class="discord-message-header">
+                <div class="discord-avatar-placeholder" id="ebBotAvatar">🤖</div>
+                <div class="discord-header-text">
+                  <span class="discord-username" id="ebBotName">SC SmartTech</span>
+                  <span class="discord-bot-badge">APP</span>
+                  <span class="discord-timestamp">Today at 12:00 PM</span>
+                </div>
+              </div>
+              <div class="discord-embed" id="ebPreviewCard" style="border-left: 4px solid #0059ff">
+                <div class="discord-embed-content">
+                  <div class="discord-embed-text">
+                    <div class="discord-embed-title" id="ebPreviewTitle">Embed Title</div>
+                    <div class="discord-embed-description" id="ebPreviewDescription">Embed body text (supports markdown)</div>
+                  </div>
+                  <img src="" id="ebPreviewThumbnail" class="discord-embed-thumbnail hidden" alt="">
+                </div>
+                <img src="" id="ebPreviewImage" class="discord-embed-image hidden" alt="">
+                <div class="discord-embed-footer" id="ebPreviewFooter">Footer text</div>
+              </div>
+            </div>
           </div>
         </div>
       </section>

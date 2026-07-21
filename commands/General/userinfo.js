@@ -27,12 +27,12 @@ module.exports = {
         dnd: `${e.DND} Do Not Disturb`,
         offline: `${e.Invisible} Offline`
       };
-      const status = statusMap[user.presence ? user.presence.status : 'offline'] || `${e.Invisible} Offline`;
+      const status = statusMap[member.presence ? member.presence.status : 'offline'] || `${e.Invisible} Offline`;
 
       // Activities details
       let activityText = '*None*';
-      if (user.presence && user.presence.activities.length > 0) {
-        const activities = user.presence.activities.map(act => {
+      if (member.presence && member.presence.activities.length > 0) {
+        const activities = member.presence.activities.map(act => {
           if (act.type === ActivityType.Custom) {
             const emojiStr = act.emoji ? `${act.emoji.name} ` : '';
             return `Custom Status: ${emojiStr}*"${act.state || ''}"*`;
