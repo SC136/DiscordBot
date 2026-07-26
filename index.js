@@ -737,17 +737,49 @@ app.get('/api/invite-leaderboard', dashAuth, async (req, res) => {
   }
 });
 
-app.get('/api/welcome', dashAuth, (req, res) => {
+app.get('/api/custom-commands', dashAuth, (req, res) => {
   const fresh = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
-  res.json(fresh.welcome || {});
+  res.json({ commands: fresh.customCommands || {} });
 });
 
-app.post('/api/welcome', dashAuth, (req, res) => {
-  const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
-  cfg.welcome = { ...cfg.welcome, ...req.body };
-  fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
-  config.welcome = cfg.welcome;
-  res.json({ success: true, welcome: cfg.welcome });
+app.post('/api/custom-commands', dashAuth, (req, res) => {
+  try {
+    const { name, response, description, embed, oldName } = req.body;
+    if (!name || !response) return res.status(400).json({ error: 'Name and response are required' });
+    const safeName = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9\-_]/g, '').substring(0, 32);
+    if (!safeName) return res.status(400).json({ error: 'Invalid command name' });
+
+    const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    if (!cfg.customCommands) cfg.customCommands = {};
+
+    // If renaming, delete old entry
+    if (oldName && oldName !== safeName && cfg.customCommands[oldName]) {
+      delete cfg.customCommands[oldName];
+    }
+
+    cfg.customCommands[safeName] = { response, description: description || '', embed: !!embed };
+    fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
+    config.customCommands = cfg.customCommands;
+    res.json({ success: true, commands: cfg.customCommands });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/custom-commands', dashAuth, (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: 'Name required' });
+
+    const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    if (!cfg.customCommands) cfg.customCommands = {};
+    delete cfg.customCommands[name];
+    fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
+    config.customCommands = cfg.customCommands;
+    res.json({ success: true, commands: cfg.customCommands });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // GET /api/insights — Detailed Discord Server Insights (Growth, Engagement, Audience)
@@ -1523,6 +1555,21 @@ client.on('messageCreate', async message => {
         error: err
       });
     }
+    return;
+  }
+
+  // Custom commands (created from dashboard)
+  const customCmds = config.customCommands || {};
+  const customCmd = customCmds[cmd];
+  if (customCmd) {
+    if (customCmd.embed) {
+      const embed = new EmbedBuilder()
+        .setDescription(customCmd.response)
+        .setColor(config.color || '#0059ff');
+      if (customCmd.description) embed.setFooter({ text: customCmd.description });
+      return message.channel.send({ embeds: [embed] });
+    }
+    return message.channel.send(customCmd.response);
   }
 });
 
@@ -1558,121 +1605,8 @@ client.on('guildMemberAdd', async member => {
     }
   }
 
-  const role = member.guild.roles.cache.find(role => role.id === "595587230698045442")
-  member.roles.add(role)
-  const channel = member.guild.channels.cache.find(
-    channel => channel.id === (config.welcome ? config.welcome.channel : '714858330295631965')
-  );
-  if (!channel) return;
-  const membername = member.user.username;
-  const embed = new EmbedBuilder()
-    .setTitle(
-      `<:SCSmartTechLogo:793665812493893652> Welcome ${membername}! To SC SmartTech Official Discord Server!!!`
-    )
-    .setThumbnail(`${member.user.displayAvatarURL()}`)
-    .setDescription(
-      'Make Sure To Read The Rules From <#708001083729117236> Channel, And Enjoy!!!\nAlso Get Some Roles From <#711594165078851646>!!!'
-    )
-    .setImage(
-      'https://media.discordapp.net/attachments/779005181760765985/795528671888015430/unknown.png?width=1440&height=460'
-    )
-    .addFields({
-      name: `And Now We Have ${member.guild.memberCount} Members!!!`,
-      value: '<@&595587230698045442> Greet Them In <#594513706055106562>!!!'
-    })
-    .setFooter({ text: `${member.user.tag} Just Joined The Server!!!` })
-    .setColor('#7289DA')
-    .setTimestamp();
-  channel.send({ content: `***Hey! ${member}***`, embeds: [embed] });
-});
-
-//Welcome Image
-
-client.on('guildMemberAdd', async member => {
-  const channel = member.guild.channels.cache.find(
-    channel => channel.id === (config.welcome ? config.welcome.channel : '714858330295631965')
-  );
-  if (!channel) return;
-  const { createCanvas, loadImage } = require('@napi-rs/canvas');
-  const canvas = createCanvas(500, 227);
-  const ctx = canvas.getContext('2d');
-  const target = member.user;
-
-  let avatar;
-  try {
-    avatar = await loadImage(
-      target.displayAvatarURL({ format: 'png', dynamic: false })
-    );
-  } catch (err) {
-    console.error("Failed to load user avatar for welcome card:", err.message);
-    try {
-      avatar = await loadImage(target.defaultAvatarURL);
-    } catch (e) {
-      console.error("Failed to load default avatar:", e.message);
-    }
-  }
-
-  // Create a premium multi-stop gradient background
-  const gradient = ctx.createLinearGradient(0, 0, 500, 227);
-  gradient.addColorStop(0, '#0f0c1b'); // very dark purple/black
-  gradient.addColorStop(0.5, '#201a30');
-  gradient.addColorStop(1, '#2c1930');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 500, 227);
-
-  // Draw modern abstract ambient highlights
-  ctx.fillStyle = 'rgba(114, 137, 218, 0.05)';
-  ctx.beginPath();
-  ctx.arc(500, 0, 250, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = 'rgba(0, 89, 255, 0.08)';
-  ctx.beginPath();
-  ctx.arc(0, 227, 180, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Clean diagonal background pattern stripes
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-  ctx.lineWidth = 2;
-  for (let i = -100; i < 600; i += 40) {
-    ctx.beginPath();
-    ctx.moveTo(i, 0);
-    ctx.lineTo(i + 150, 227);
-    ctx.stroke();
-  }
-
-  // Draw elegant Welcome text
-  ctx.font = 'bold 36px sans-serif';
-  ctx.fillStyle = '#0059FF';
-  ctx.fillText('WELCOME', 30, 75);
-
-  ctx.font = 'italic 16px sans-serif';
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.fillText('to the official server!', 30, 110);
-
-  if (avatar) {
-    ctx.beginPath();
-    ctx.arc(406, 90, 70, 0, Math.PI * 2);
-    ctx.lineWidth = 5;
-    ctx.strokeStyle = 'white';
-    ctx.stroke();
-    ctx.closePath();
-    ctx.save();
-    ctx.clip();
-    ctx.drawImage(avatar, 336, 21, 140, 140);
-    ctx.restore();
-  }
-  ctx.font = 'italic 30px sans-serif';
-  ctx.fillStyle = 'white';
-  ctx.fillText(`${target.username}`, 280, 204);
-  channel.send({
-    files: [
-      {
-        attachment: canvas.toBuffer(),
-        name: 'SC-SmartTech-Welcome-Image.png'
-      }
-    ]
-  });
+  const role = member.guild.roles.cache.find(role => role.id === "595587230698045442");
+  if (role) member.roles.add(role).catch(() => {});
 });
 
 // Leave Alert WebHook
@@ -1741,26 +1675,7 @@ client.on('guildMemberRemove', async member => {
   }
 });
 
-//Bye-Bye Embed
 
-client.on('guildMemberRemove', member => {
-  const channel = member.guild.channels.cache.find(
-    channel => channel.id === '694120130040561664'
-  );
-  if (!channel) return;
-  const membernamet = member.user.tag;
-  const embed = new EmbedBuilder()
-    .setTitle(
-      `<:SCSmartTechLogo:793665812493893652> ${membernamet} Left The Server 🙁`
-    )
-    .setThumbnail(`${member.user.displayAvatarURL()}`)
-    .setDescription(
-      `And Now We Have Only ${member.guild.memberCount} Members :(`
-    )
-    .setColor('#0059FF')
-    .setTimestamp();
-  channel.send({ embeds: [embed] });
-});
 
 //Mention Reply
 
@@ -2329,6 +2244,7 @@ client.on('interactionCreate', async interaction => {
     if (!command) return;
 
     try {
+      await interaction.deferReply().catch(() => {});
       const ctx = new Context(interaction);
       const args = [];
       if (interaction.options && interaction.options.data) {
@@ -2338,10 +2254,12 @@ client.on('interactionCreate', async interaction => {
       }
       await command.run(client, ctx, args);
     } catch (error) {
-      console.error(error);
+      console.error(`[SlashCommand Error] /${interaction.commandName}:`, error);
       const reply = { content: 'There was an error while executing this command!', ephemeral: true };
-      if (interaction.replied || interaction.deferred) {
+      if (interaction.replied) {
         await interaction.followUp(reply).catch(() => {});
+      } else if (interaction.deferred) {
+        await interaction.editReply(reply).catch(() => {});
       } else {
         await interaction.reply(reply).catch(() => {});
       }

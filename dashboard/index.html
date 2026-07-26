@@ -50,6 +50,7 @@
       <div class="nav-item" onclick="navigate('commands', this)">⚙️ Commands</div>
       <div class="nav-item" onclick="navigate('livefeed', this)">🔔 Live Feed</div>
       <div class="nav-item" onclick="navigate('embed-builder', this)">📢 Embed Builder</div>
+      <div class="nav-item" onclick="navigate('custom-commands', this)">🤖 Custom Commands</div>
       <div class="nav-item" onclick="navigate('config', this)">📝 Settings</div>
     </aside>
 
@@ -633,6 +634,49 @@
         </div>
       </section>
 
+      <!-- ═══ CUSTOM COMMANDS ═══ -->
+      <section id="custom-commands" class="view-section">
+        <div class="section-header">
+          <h2>Custom <em>Commands</em></h2>
+          <p class="section-sub">Create simple text-response commands without writing code. Users trigger them with your bot prefix.</p>
+        </div>
+
+        <div class="custom-cmd-layout">
+          <!-- Creator Panel -->
+          <div class="glass-panel" style="padding:2rem">
+            <div class="activity-item-title" id="ccEditorTitle">Create New Command</div>
+            <div class="form-group">
+              <label>Command Name <span style="opacity:.5">(no spaces, lowercase)</span></label>
+              <input type="text" id="ccName" placeholder="e.g. rules" maxlength="32">
+            </div>
+            <div class="form-group">
+              <label>Response <span style="opacity:.5">(what the bot replies)</span></label>
+              <textarea id="ccResponse" rows="5" placeholder="📜 Please read the rules in #rules!"></textarea>
+            </div>
+            <div class="form-group">
+              <label>Description <span style="opacity:.5">(shown in help, optional)</span></label>
+              <input type="text" id="ccDescription" placeholder="Shows the server rules">
+            </div>
+            <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">
+              <input type="checkbox" id="ccEmbed" style="width:auto">
+              <label style="margin:0">Send as Embed</label>
+            </div>
+            <div class="cc-btn-row">
+              <button class="btn-save" onclick="saveCustomCommand()">💾 Save Command</button>
+              <button class="btn-save btn-secondary" id="ccCancelBtn" onclick="cancelEditCommand()" style="display:none">✕ Cancel Edit</button>
+            </div>
+          </div>
+
+          <!-- Command List -->
+          <div class="glass-panel" style="padding:2rem">
+            <div class="activity-item-title">Your Commands <span id="ccCount" style="opacity:.5">(0)</span></div>
+            <div id="ccList" class="cc-list">
+              <div class="cc-empty">No custom commands yet. Create one to get started!</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ═══ SETTINGS ═══ -->
       <section id="config" class="view-section">
         <div class="section-header"><h2><em>Settings</em></h2></div>
@@ -643,18 +687,6 @@
               <div class="form-group"><label>Prefix</label><input type="text" id="cfgPrefix" placeholder="sc"></div>
               <div class="form-group"><label>Embed Color</label><input type="text" id="cfgColor" placeholder="#0059ff"></div>
               <button class="btn-save" onclick="saveConfig()">Save Configuration →</button>
-            </div>
-          </div>
-          <div class="glass-panel" style="padding:2rem">
-            <div class="activity-item-title">Welcome Settings</div>
-            <div class="config-grid">
-              <div class="form-group" style="flex-direction:row;align-items:center;gap:0.5rem">
-                <input type="checkbox" id="cfgWelcomeEnabled" style="width:auto">
-                <label style="margin:0">Enable Welcome Messages</label>
-              </div>
-              <div class="form-group"><label>Welcome Channel ID</label><input type="text" id="cfgWelcomeChannel"></div>
-              <div class="form-group"><label>Welcome Message</label><input type="text" id="cfgWelcomeMsg" placeholder="Welcome {user}!"></div>
-              <button class="btn-save" onclick="saveWelcomeConfig()">Save Welcome →</button>
             </div>
           </div>
         </div>

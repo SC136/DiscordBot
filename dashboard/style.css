@@ -493,3 +493,137 @@ em { font-style: italic; font-weight: 600; color: var(--accent); }
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Custom Commands ── */
+.custom-cmd-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+@media (max-width: 1024px) {
+  .custom-cmd-layout {
+    grid-template-columns: 1fr;
+  }
+}
+.custom-cmd-layout textarea {
+  width: 100%;
+  padding: 0.6rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-glass);
+  background: var(--surface-glass);
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-family: 'Cormorant Garamond', serif;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+.custom-cmd-layout textarea:focus {
+  border-color: var(--accent);
+  outline: none;
+}
+.cc-btn-row {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.btn-secondary {
+  background: transparent !important;
+  border: 1px solid var(--danger) !important;
+  color: var(--danger) !important;
+}
+.btn-secondary:hover {
+  background: rgba(232, 93, 93, 0.15) !important;
+}
+.cc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  max-height: 520px;
+  overflow-y: auto;
+}
+.cc-empty {
+  text-align: center;
+  color: var(--ink-dim);
+  padding: 2rem 1rem;
+  font-style: italic;
+}
+.cc-card {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  transition: border-color 0.2s, transform 0.15s;
+  animation: ccFadeIn 0.3s ease;
+}
+.cc-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+@keyframes ccFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.cc-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+.cc-card-name {
+  font-weight: 700;
+  color: var(--accent);
+  font-size: 1rem;
+  font-family: 'Cormorant Garamond', serif;
+}
+.cc-card-name::before {
+  content: '/';
+  opacity: 0.4;
+  margin-right: 2px;
+}
+.cc-card-actions {
+  display: flex;
+  gap: 0.4rem;
+}
+.cc-card-actions button {
+  background: transparent;
+  border: 1px solid var(--border-glass);
+  color: var(--ink-muted);
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cc-card-actions .cc-edit:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.cc-card-actions .cc-delete:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: rgba(232, 93, 93, 0.1);
+}
+.cc-card-response {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 80px;
+  overflow: hidden;
+}
+.cc-card-meta {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  color: var(--ink-dim);
+}
+.cc-badge {
+  background: rgba(232, 200, 122, 0.12);
+  color: var(--accent);
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}

@@ -87,6 +87,7 @@ function navigate(viewId, element) {
   else if (viewId === 'audit') loadAudit();
   else if (viewId === 'commands') loadCommands();
   else if (viewId === 'embed-builder') loadEmbedBuilder();
+  else if (viewId === 'custom-commands') loadCustomCommands();
   else if (viewId === 'config') loadConfig();
 }
 
@@ -757,11 +758,6 @@ function loadConfig() {
     document.getElementById('cfgPrefix').value = data.prefix || '';
     document.getElementById('cfgColor').value = data.color || '';
   }).catch(console.error);
-  fetch('/api/welcome?key=' + encodeURIComponent(dashKey)).then(r=>r.json()).then(data => {
-    document.getElementById('cfgWelcomeChannel').value = data.channel || '';
-    document.getElementById('cfgWelcomeMsg').value = data.message || '';
-    document.getElementById('cfgWelcomeEnabled').checked = data.enabled;
-  }).catch(console.error);
 }
 function saveConfig() {
   const prefix = document.getElementById('cfgPrefix').value.trim();
@@ -772,14 +768,127 @@ function saveConfig() {
     .then(() => showToast('Configuration saved', 'success'))
     .catch(() => showToast('Failed to save', 'error'));
 }
-function saveWelcomeConfig() {
-  const channel = document.getElementById('cfgWelcomeChannel').value;
-  const message = document.getElementById('cfgWelcomeMsg').value;
-  const enabled = document.getElementById('cfgWelcomeEnabled').checked;
-  fetch('/api/welcome?key=' + encodeURIComponent(dashKey), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ channel, message, enabled }) })
+
+// ══════════════════════════════════════
+//  CUSTOM COMMANDS
+// ══════════════════════════════════════
+let ccEditingName = null; // tracks which command we're editing
+
+function loadCustomCommands() {
+  fetch('/api/custom-commands?key=' + encodeURIComponent(dashKey))
+    .then(r => r.json())
+    .then(data => renderCommandList(data.commands || {}))
+    .catch(() => showToast('Failed to load custom commands', 'error'));
+}
+
+function renderCommandList(commands) {
+  const list = document.getElementById('ccList');
+  const count = document.getElementById('ccCount');
+  const entries = Object.entries(commands);
+  count.textContent = '(' + entries.length + ')';
+
+  if (entries.length === 0) {
+    list.innerHTML = '<div class="cc-empty">No custom commands yet. Create one to get started!</div>';
+    return;
+  }
+
+  list.innerHTML = entries.map(([name, cmd]) => {
+    const resp = escapeHtml((cmd.response || '').substring(0, 120));
+    const desc = cmd.description ? escapeHtml(cmd.description) : '';
+    const embedBadge = cmd.embed ? '<span class="cc-badge">EMBED</span>' : '';
+    return `
+      <div class="cc-card">
+        <div class="cc-card-header">
+          <span class="cc-card-name">${escapeHtml(name)}</span>
+          <div class="cc-card-actions">
+            <button class="cc-edit" onclick="editCustomCommand('${escapeHtml(name)}')">✎ Edit</button>
+            <button class="cc-delete" onclick="deleteCustomCommand('${escapeHtml(name)}')">✕ Delete</button>
+          </div>
+        </div>
+        <div class="cc-card-response">${resp}${cmd.response && cmd.response.length > 120 ? '…' : ''}</div>
+        <div class="cc-card-meta">
+          ${desc ? '<span>' + desc + '</span>' : ''}
+          ${embedBadge}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function saveCustomCommand() {
+  const nameInput = document.getElementById('ccName');
+  const responseInput = document.getElementById('ccResponse');
+  const descInput = document.getElementById('ccDescription');
+  const embedInput = document.getElementById('ccEmbed');
+
+  const name = nameInput.value.trim().toLowerCase().replace(/\s+/g, '-');
+  const response = responseInput.value.trim();
+  const description = descInput.value.trim();
+  const embed = embedInput.checked;
+
+  if (!name) return showToast('Command name is required', 'error');
+  if (!response) return showToast('Response cannot be empty', 'error');
+  if (name.length > 32) return showToast('Name must be 32 chars or less', 'error');
+
+  const body = { name, response, description, embed };
+  if (ccEditingName && ccEditingName !== name) body.oldName = ccEditingName;
+
+  fetch('/api/custom-commands?key=' + encodeURIComponent(dashKey), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  })
     .then(r => { if (!r.ok) throw new Error(); return r.json(); })
-    .then(() => showToast('Welcome settings saved', 'success'))
-    .catch(() => showToast('Failed to save', 'error'));
+    .then(data => {
+      showToast(ccEditingName ? 'Command updated!' : 'Command created!', 'success');
+      cancelEditCommand();
+      renderCommandList(data.commands || {});
+    })
+    .catch(() => showToast('Failed to save command', 'error'));
+}
+
+function editCustomCommand(name) {
+  fetch('/api/custom-commands?key=' + encodeURIComponent(dashKey))
+    .then(r => r.json())
+    .then(data => {
+      const cmd = (data.commands || {})[name];
+      if (!cmd) return showToast('Command not found', 'error');
+      ccEditingName = name;
+      document.getElementById('ccName').value = name;
+      document.getElementById('ccResponse').value = cmd.response || '';
+      document.getElementById('ccDescription').value = cmd.description || '';
+      document.getElementById('ccEmbed').checked = !!cmd.embed;
+      document.getElementById('ccEditorTitle').textContent = 'Editing: ' + name;
+      document.getElementById('ccCancelBtn').style.display = '';
+      document.getElementById('ccName').focus();
+    })
+    .catch(() => showToast('Failed to load command', 'error'));
+}
+
+function cancelEditCommand() {
+  ccEditingName = null;
+  document.getElementById('ccName').value = '';
+  document.getElementById('ccResponse').value = '';
+  document.getElementById('ccDescription').value = '';
+  document.getElementById('ccEmbed').checked = false;
+  document.getElementById('ccEditorTitle').textContent = 'Create New Command';
+  document.getElementById('ccCancelBtn').style.display = 'none';
+}
+
+function deleteCustomCommand(name) {
+  if (!confirm('Delete command "' + name + '"? This cannot be undone.')) return;
+  fetch('/api/custom-commands?key=' + encodeURIComponent(dashKey), {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name })
+  })
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(data => {
+      showToast('Command deleted', 'success');
+      if (ccEditingName === name) cancelEditCommand();
+      renderCommandList(data.commands || {});
+    })
+    .catch(() => showToast('Failed to delete', 'error'));
 }
 
 // ══════════════════════════════════════

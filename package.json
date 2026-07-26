@@ -17,7 +17,6 @@
     "canvacord": "^5.0.8",
     "cheerio": "^1.0.0-rc.10",
     "common-tags": "^1.8.0",
-    "discord-error-handler": "^1.2.3",
     "discord-xp": "^1.1.16",
     "discord.js": "^14.26.4",
     "dotenv": "^16.4.5",
@@ -26,10 +25,7 @@
     "moment": "^2.29.4",
     "mongodb": "^6.0.0",
     "mongoose": "^8.0.0",
-    "node-superfetch": "^0.1.11",
-    "opusscript": "^0.0.8",
-    "request": "^2.88.2",
-    "request-promise": "^4.2.6"
+    "node-superfetch": "^0.1.11"
   },
   "overrides": {
     "mongodb": "^6.0.0",
