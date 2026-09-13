@@ -14,8 +14,8 @@ module.exports = {
   run: async (client, message, args) => {
     try {
       // Find targeted member or fallback to command author
-      const member = message.mentions.members.first() || 
-                     message.guild.members.cache.get(args[0]) || 
+      const member = (message.mentions?.members?.first ? message.mentions.members.first() : null) || 
+                     (args && args[0] ? message.guild.members.cache.get(args[0].replace(/[<@!>]/g, '')) : null) || 
                      message.member;
 
       const user = member.user;

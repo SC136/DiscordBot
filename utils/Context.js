@@ -1,4 +1,4 @@
-const { CommandInteraction } = require('discord.js');
+const { CommandInteraction, Collection } = require('discord.js');
 
 /**
  * Wraps a CommandInteraction to mock a Message object.
@@ -17,11 +17,21 @@ class Context {
         this.createdTimestamp = interaction.createdTimestamp;
         // Mock message content as empty for slash commands
         this.content = '';
+
+        // Helper to ensure Collection instance with .first() support
+        const toCollection = (val) => {
+            if (val instanceof Collection) return val;
+            if (val && typeof val === 'object') {
+                return new Collection(val instanceof Map ? val.entries() : Object.entries(val));
+            }
+            return new Collection();
+        };
+
         this.mentions = {
-            users: interaction.options?.resolved?.users || new Map(),
-            roles: interaction.options?.resolved?.roles || new Map(),
-            channels: interaction.options?.resolved?.channels || new Map(),
-            members: interaction.options?.resolved?.members || new Map()
+            users: toCollection(interaction.options?.resolved?.users),
+            roles: toCollection(interaction.options?.resolved?.roles),
+            channels: toCollection(interaction.options?.resolved?.channels),
+            members: toCollection(interaction.options?.resolved?.members)
         };
         
         // Shallow copy channel to avoid mutating client cache
@@ -54,11 +64,16 @@ class Context {
         options.fetchReply = true;
         
         if (this.interaction.replied) {
-            return await this.interaction.followUp(options);
+            return await this.interaction.followUp(options).catch(() => this.interaction.editReply(options));
         } else if (this.interaction.deferred) {
-            return await this.interaction.editReply(options);
+            return await this.interaction.editReply(options).catch(() => this.interaction.followUp(options));
         } else {
-            return await this.interaction.reply(options);
+            return await this.interaction.reply(options).catch(async (err) => {
+                if (err.code === 40060 || err.code === 'InteractionAlreadyReplied') {
+                    return await this.interaction.followUp(options).catch(() => this.interaction.editReply(options));
+                }
+                throw err;
+            });
         }
     }
 
