@@ -26,13 +26,14 @@ async function twitchUserInfo(username, callback) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('twitch')
-    .setDescription('No description provided')
-    .addStringOption(opt => opt.setName('channel').setDescription('Channel name').setRequired(true)),
+    .setDescription('View Twitch user profile and details.')
+    .addStringOption(opt => opt.setName('channel').setDescription('Twitch channel name (default: sc_136)').setRequired(false)),
   name: 'twitch',
   description: 'View Twitch user details for sc_136.',
   run: async (client, message, args) => {
     try {
-      twitchUserInfo('sc_136', function(stats) {
+      const channel = (args && args[0]) ? args[0].trim() : 'sc_136';
+      twitchUserInfo(channel, function(stats) {
         if (!stats) {
           return sendError(message, {
             title: 'User not found',

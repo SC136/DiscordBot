@@ -4,10 +4,11 @@ const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('level')
-    .setDescription('rank'),
+    .setDescription('View your or another user\'s current level, XP, and rank.')
+    .addUserOption(opt => opt.setName('user').setDescription('User to view rank for (optional)').setRequired(false)),
   name: 'level',
   aliases: ['rank', 'xp'],
-  description: 'rank',
+  description: 'View your or another user\'s current level, XP, and rank.',
   run: async (client, message, args) => {
     if (!process.env.MONGO_URI) {
       return message.channel.send("XP/Leveling system is currently disabled because the database is not configured.");

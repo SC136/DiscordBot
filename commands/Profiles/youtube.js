@@ -3,8 +3,7 @@ const { EmbedBuilder , SlashCommandBuilder } = require('discord.js');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('youtube')
-    .setDescription('No description provided')
-    .addStringOption(opt => opt.setName('query').setDescription('Channel search query').setRequired(true)),
+    .setDescription('Get official SC SmartTech YouTube channel link and details.'),
   name: 'youtube',
   aliases: ['channel', 'yt', 'youtubechannel', 'youtube-channel', 'youtube channel'],
   description: 'Get My YouTube Channel Link',

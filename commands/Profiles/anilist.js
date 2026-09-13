@@ -4,8 +4,8 @@ const { sendError } = require('../../utils/errorEmbed');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('anilist')
-    .setDescription('No description provided')
-    .addStringOption(opt => opt.setName('query').setDescription('Anime or Manga name').setRequired(true)),
+    .setDescription('View AniList statistics and currently watching anime for a user.')
+    .addStringOption(opt => opt.setName('username').setDescription('AniList username (default: SC136)').setRequired(false)),
   name: 'anilist',
   aliases: ['al'],
   description: 'View AniList statistics and currently watching anime for a user.',

@@ -25,7 +25,7 @@ const typeColors = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('pokesearch')
-    .setDescription('No description provided')
+    .setDescription('Search for a Pokémon and view its detailed information.')
     .addStringOption(opt => opt.setName('pokemon').setDescription('The name of the pokemon to search for').setRequired(true)),
   name: 'pokesearch',
   aliases: ['searchpokemon', 'pokemonsearch', 'pokemoninfo', 'pokeinfo'],

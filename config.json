@@ -5,5 +5,14 @@
   "owner": "594504468931018752",
   "guild": "594513706055106560",
   "disabledCommands": [],
-  "customCommands": {}
+  "customCommands": {
+    "yespls": {
+      "response": "nopls",
+      "description": "",
+      "embed": false
+    }
+  },
+  "nicknameLockedUsers": {
+    "1147423568808906793": "VadaPav 🍞🥔🍞"
+  }
 }

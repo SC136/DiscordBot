@@ -3,14 +3,18 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SC SmartTech — Command Center</title>
+  <meta name="color-scheme" content="dark">
+  <title>SC SmartTech: Command Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <!-- Top Global Loading Bar -->
+  <div class="global-progress-bar" id="globalProgressBar"></div>
 
   <!-- Noise grain overlay -->
   <div class="noise-overlay"></div>
@@ -21,65 +25,111 @@
   <!-- Auth Overlay -->
   <div class="auth-overlay" id="authOverlay">
     <div class="auth-box">
-      <div class="auth-icon">⟡</div>
+      <div class="auth-icon"><i data-lucide="shield" class="auth-lucide"></i></div>
       <h2>Command Center</h2>
       <p>Enter your key to access the dashboard.</p>
       <input type="password" id="authKeyInput" placeholder="Dashboard Key" autocomplete="off">
-      <button onclick="authenticate()">Enter ↗</button>
+      <button onclick="authenticate()"><i data-lucide="shield-check" class="btn-icon"></i> Unlock Dashboard</button>
     </div>
   </div>
 
   <!-- Main App (hidden until auth) -->
   <div class="app-shell hidden" id="mainApp">
+    <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
 
     <!-- Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
-        <div class="nav-brand">SC <em>SmartTech</em></div>
-        <div class="nav-status"><span class="status-dot"></span>Connected</div>
+        <div class="sidebar-brand-row">
+          <div class="sidebar-bot-profile">
+            <div class="sidebar-bot-avatar-wrap">
+              <img id="sidebarBotAvatar" class="sidebar-bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar" />
+              <span class="status-dot-pulse"></span>
+            </div>
+            <div class="sidebar-bot-info">
+              <div class="nav-brand" id="sidebarBotName">SC <em>SmartTech</em></div>
+              <div class="nav-status"><span class="status-dot"></span>Connected</div>
+            </div>
+          </div>
+          <button type="button" class="sidebar-close-btn" id="sidebarCloseBtn" aria-label="Close navigation menu">
+            <i data-lucide="x"></i>
+          </button>
+        </div>
       </div>
-      <div class="nav-item active" onclick="navigate('overview', this)">📊 Overview</div>
-      <div class="nav-item" onclick="navigate('growth', this)">📈 Growth & Activation</div>
-      <div class="nav-item" onclick="navigate('engagement', this)">💬 Engagement</div>
-      <div class="nav-item" onclick="navigate('audience', this)">🌍 Audience</div>
-      <div class="nav-item" onclick="navigate('leaderboard', this)">🏆 XP Leaderboard</div>
-      <div class="nav-item" onclick="navigate('invite-leaderboard', this)">🔗 Invite Leaderboard</div>
-      <div class="nav-item" onclick="navigate('activity', this)">🎮 Activity</div>
-      <div class="nav-item" onclick="navigate('members', this)">👥 Members</div>
-      <div class="nav-item" onclick="navigate('audit', this)">📋 Audit Logs</div>
-      <div class="nav-item" onclick="navigate('commands', this)">⚙️ Commands</div>
-      <div class="nav-item" onclick="navigate('livefeed', this)">🔔 Live Feed</div>
-      <div class="nav-item" onclick="navigate('embed-builder', this)">📢 Embed Builder</div>
-      <div class="nav-item" onclick="navigate('custom-commands', this)">🤖 Custom Commands</div>
-      <div class="nav-item" onclick="navigate('config', this)">📝 Settings</div>
+      <div class="nav-list" role="tablist">
+        <button type="button" class="nav-item active" role="tab" aria-selected="true" onclick="navigate('overview', this)"><i data-lucide="layout-dashboard"></i> Overview</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('growth', this)"><i data-lucide="trending-up"></i> Growth &amp; Activation</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('engagement', this)"><i data-lucide="message-square"></i> Engagement</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('audience', this)"><i data-lucide="globe"></i> Audience</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('leaderboard', this)"><i data-lucide="trophy"></i> XP Leaderboard</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('invite-leaderboard', this)"><i data-lucide="link"></i> Invite Leaderboard</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('activity', this)"><i data-lucide="gamepad-2"></i> Activity</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('members', this)"><i data-lucide="users"></i> Members</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('audit', this)"><i data-lucide="clipboard-list"></i> Audit Logs</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('commands', this)"><i data-lucide="terminal"></i> Commands</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('livefeed', this)"><i data-lucide="bell"></i> Live Feed</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('embed-builder', this)"><i data-lucide="megaphone"></i> Embed Builder</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('custom-commands', this)"><i data-lucide="bot"></i> Custom Commands</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('nickname-lock', this)"><i data-lucide="lock"></i> Nickname Lock</button>
+        <button type="button" class="nav-item" role="tab" aria-selected="false" onclick="navigate('config', this)"><i data-lucide="sliders-horizontal"></i> Settings</button>
+      </div>
     </aside>
 
     <!-- Main Content -->
     <main class="main-content">
+      <div class="mobile-topbar" id="mobileTopbar">
+        <button type="button" class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Open navigation menu">
+          <i data-lucide="menu"></i>
+          <span class="mobile-menu-label">Menu</span>
+        </button>
+        <div class="mobile-brand-wrap">
+          <img id="mobileBotAvatar" class="mobile-bot-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar" />
+          <div class="mobile-brand">SC <em>SmartTech</em></div>
+        </div>
+      </div>
 
       <!-- ═══ OVERVIEW ═══ -->
       <section id="overview" class="view-section active">
-        <div class="section-header">
-          <div class="section-label-text">Bot Dashboard</div>
-          <h2>Command <em>Center</em></h2>
-          <p class="section-sub">Monitor your server, manage configurations, and track your community's growth.</p>
+        <div class="section-header overview-hero-header">
+          <div class="overview-hero-left">
+            <div class="section-label-text">Bot Dashboard</div>
+            <h2>Command <em>Center</em></h2>
+            <p class="section-sub">Monitor your server, manage configurations, and track your community's growth.</p>
+          </div>
+          <div class="bot-badge-card" id="heroBotCard">
+            <div class="bot-badge-avatar-wrap">
+              <img id="heroBotAvatar" class="bot-badge-avatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot Avatar" />
+              <span class="bot-badge-status-ring"></span>
+            </div>
+            <div class="bot-badge-details">
+              <div class="bot-badge-name-row">
+                <span class="bot-badge-name" id="heroBotName">SC SmartTech</span>
+                <span class="bot-tag-pill">BOT</span>
+              </div>
+              <div class="bot-badge-meta">
+                <span class="bot-badge-ping" id="heroBotPing"><i data-lucide="zap" class="mini-icon"></i> -- ms</span>
+                <span class="bot-badge-sep">•</span>
+                <span class="bot-badge-uptime" id="heroBotUptime"><i data-lucide="clock" class="mini-icon"></i> --</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Stats Cards -->
         <div class="section-label">Server Overview</div>
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-card-label">Members</div><div class="stat-card-value" id="statMembers">—</div></div>
-          <div class="stat-card"><div class="stat-card-label">Online</div><div class="stat-card-value" id="statOnline">—</div></div>
-          <div class="stat-card"><div class="stat-card-label">Channels</div><div class="stat-card-value" id="statChannels">—</div></div>
-          <div class="stat-card"><div class="stat-card-label">Uptime</div><div class="stat-card-value" id="statUptime">—</div></div>
+          <div class="stat-card stat-primary"><div class="stat-card-label">Total Members</div><div class="stat-card-value" id="statMembers">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Online</div><div class="stat-card-value" id="statOnline">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Channels</div><div class="stat-card-value" id="statChannels">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Uptime</div><div class="stat-card-value" id="statUptime">--</div></div>
         </div>
 
         <!-- System Health Stats -->
         <div class="section-label" style="margin-top: 1.5rem">System Health</div>
         <div class="stats-grid">
-          <div class="stat-card"><div class="stat-card-label">Memory (RSS)</div><div class="stat-card-value" id="statMemory">—</div></div>
-          <div class="stat-card"><div class="stat-card-label">Gateway Ping</div><div class="stat-card-value" id="statPing">—</div></div>
-          <div class="stat-card"><div class="stat-card-label">CPU Load (1m)</div><div class="stat-card-value" id="statCpu">—</div></div>
+          <div class="stat-card"><div class="stat-card-label">Memory (RSS)</div><div class="stat-card-value" id="statMemory">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">Gateway Ping</div><div class="stat-card-value" id="statPing">--</div></div>
+          <div class="stat-card"><div class="stat-card-label">CPU Load (1m)</div><div class="stat-card-value" id="statCpu">--</div></div>
         </div>
 
         <!-- Mini Analytics Preview -->
@@ -92,21 +142,21 @@
         <!-- Mini Leaderboards -->
         <div class="overview-mini-row">
           <div class="glass-panel mini-panel">
-            <div class="mini-panel-title">🔊 Top VC Users</div>
+            <div class="mini-panel-title"><i data-lucide="volume-2" class="mini-icon"></i> Top VC Users</div>
             <div id="ovVoiceLeaderboard" class="mini-list">Loading...</div>
           </div>
           <div class="glass-panel mini-panel">
-            <div class="mini-panel-title">💬 Top Chatters</div>
+            <div class="mini-panel-title"><i data-lucide="message-circle" class="mini-icon"></i> Top Chatters</div>
             <div id="ovTopChatters" class="mini-list">Loading...</div>
           </div>
           <div class="glass-panel mini-panel">
-            <div class="mini-panel-title">🎮 Top Games</div>
+            <div class="mini-panel-title"><i data-lucide="gamepad-2" class="mini-icon"></i> Top Games</div>
             <div id="ovTopGames" class="mini-list">Loading...</div>
           </div>
         </div>
 
         <!-- Live Activity Preview -->
-        <div class="section-label"><span class="status-dot"></span> Live Server Activity</div>
+        <div class="section-label">Live Server Activity</div>
         <div class="glass-panel" style="padding:1.25rem">
           <div id="ovLiveActivities" class="live-badges-container">
             <div class="placeholder-text">No active games at the moment.</div>
@@ -141,7 +191,7 @@
         </div>
 
         <div style="font-size:0.75rem; color:var(--ink-dim); margin-bottom: 1.5rem; line-height:1.4">
-          ℹ️ Only data from the last 120 days are available for non-Partner and non-Verified servers. Users who opted-out of analytics tracking will not show up in the data.
+          <i data-lucide="info" class="inline-icon-sm"></i> Only data from the last 120 days are available for non-Partner and non-Verified servers. Users who opted-out of analytics tracking will not show up in the data.
         </div>
 
         <!-- Key Metrics -->
@@ -149,18 +199,18 @@
         <div class="stats-grid" style="margin-bottom: 2rem">
           <div class="stat-card">
             <div class="stat-card-label">New Members</div>
-            <div class="stat-card-value" id="growthNewMembers">—</div>
+            <div class="stat-card-value" id="growthNewMembers">--</div>
             <div class="stat-card-sub">How many new members joined</div>
           </div>
           <div class="stat-card">
             <div class="stat-card-label">New Communicators</div>
-            <div class="stat-card-value" id="growthNewCommunicators">—</div>
+            <div class="stat-card-value" id="growthNewCommunicators">--</div>
             <div class="stat-card-sub">Active members on their first day</div>
           </div>
           <div class="stat-card">
             <div class="stat-card-label">New Member Retention</div>
-            <div class="stat-card-value" id="growthNewRetention">—</div>
-            <div class="stat-card-sub" id="growthNewRetentionCompare">50.0% (+300% vs last month)</div>
+            <div class="stat-card-value" id="growthNewRetention">--</div>
+            <div class="stat-card-sub" id="growthNewRetentionCompare">Based on first 7 days</div>
           </div>
         </div>
 
@@ -173,14 +223,14 @@
           <div class="glass-panel chart-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
               <span class="chart-title" style="margin:0">Joins by Source</span>
-              <button class="filter-btn" onclick="exportCSV('joinsSource')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('joinsSource')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <div class="chart-container"><canvas id="joinsSourceChart"></canvas></div>
           </div>
           <div class="glass-panel chart-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
               <span class="chart-title" style="margin:0">Total membership over time</span>
-              <button class="filter-btn" onclick="exportCSV('membershipTime')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('membershipTime')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <div class="chart-container"><canvas id="membershipTimeChart"></canvas></div>
           </div>
@@ -189,7 +239,7 @@
         <div class="glass-panel chart-panel" style="margin-bottom: 2rem">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
             <span class="chart-title" style="margin:0">Server leaves over time</span>
-            <button class="filter-btn" onclick="exportCSV('leavesTime')">Export CSV</button>
+            <button class="filter-btn" onclick="exportCSV('leavesTime')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
           </div>
           <div class="chart-container"><canvas id="leavesTimeChart"></canvas></div>
         </div>
@@ -203,7 +253,7 @@
         <div class="glass-panel chart-panel" style="margin-bottom: 2rem">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
             <span class="chart-title" style="margin:0">First Day Activation Rate <span class="chart-hint">(Benchmark: 15% Talked)</span></span>
-            <button class="filter-btn" onclick="exportCSV('activationRate')">Export CSV</button>
+            <button class="filter-btn" onclick="exportCSV('activationRate')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
           </div>
           <div class="chart-container"><canvas id="activationRateChart"></canvas></div>
         </div>
@@ -217,7 +267,7 @@
         <div class="glass-panel chart-panel" style="margin-bottom: 2rem">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
             <span class="chart-title" style="margin:0">Week 1 Retention Rate <span class="chart-hint">(Benchmark: 20% Retained)</span></span>
-            <button class="filter-btn" onclick="exportCSV('retentionRate')">Export CSV</button>
+            <button class="filter-btn" onclick="exportCSV('retentionRate')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
           </div>
           <div class="chart-container"><canvas id="retentionRateChart"></canvas></div>
         </div>
@@ -228,7 +278,7 @@
           <div class="glass-panel" style="padding:1.5rem">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="activity-item-title" style="margin:0; border-bottom:none; padding:0; font-size:1.1rem">Most popular invites</span>
-              <button class="filter-btn" onclick="exportCSV('popularInvites')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('popularInvites')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Invite URL</th><th>Joins</th></tr></thead>
@@ -238,7 +288,7 @@
           <div class="glass-panel" style="padding:1.5rem">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="activity-item-title" style="margin:0; border-bottom:none; padding:0; font-size:1.1rem">Most popular referrers</span>
-              <button class="filter-btn" onclick="exportCSV('popularReferrers')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('popularReferrers')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Referrer</th><th>Joins</th></tr></thead>
@@ -275,7 +325,7 @@
         </div>
 
         <div style="font-size:0.75rem; color:var(--ink-dim); margin-bottom: 1.5rem; line-height:1.4">
-          ℹ️ Only data from the last 120 days are available for non-Partner and non-Verified servers. Users who opted-out of analytics tracking will not show up in the data.
+          <i data-lucide="info" class="inline-icon-sm"></i> Only data from the last 120 days are available for non-Partner and non-Verified servers. Users who opted-out of analytics tracking will not show up in the data.
         </div>
 
         <!-- Key Metrics -->
@@ -283,22 +333,22 @@
         <div class="stats-grid" style="margin-bottom: 2rem">
           <div class="stat-card">
             <div class="stat-card-label">Visitors</div>
-            <div class="stat-card-value" id="engVisitors">—</div>
+            <div class="stat-card-value" id="engVisitors">--</div>
             <div class="stat-card-sub">Members who viewed >=1 channel</div>
           </div>
           <div class="stat-card">
             <div class="stat-card-label">Communicators</div>
-            <div class="stat-card-value" id="engCommunicators">—</div>
+            <div class="stat-card-value" id="engCommunicators">--</div>
             <div class="stat-card-sub">Sent msg or joined VC</div>
           </div>
           <div class="stat-card">
             <div class="stat-card-label">Total Messages Sent</div>
-            <div class="stat-card-value" id="engTotalMessages">—</div>
+            <div class="stat-card-value" id="engTotalMessages">--</div>
             <div class="stat-card-sub">Across all text channels</div>
           </div>
           <div class="stat-card">
             <div class="stat-card-label">Total Voice Minutes</div>
-            <div class="stat-card-value" id="engTotalVoice">—</div>
+            <div class="stat-card-value" id="engTotalVoice">--</div>
             <div class="stat-card-sub">Time spent in voice channels</div>
           </div>
         </div>
@@ -307,7 +357,7 @@
         <div class="glass-panel chart-panel" style="margin-bottom: 1.5rem">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
             <span class="chart-title" style="margin:0">How many members visited and communicated? <span class="chart-hint">(Benchmark: 15% Communicators)</span></span>
-            <button class="filter-btn" onclick="exportCSV('visitedCommunicated')">Export CSV</button>
+            <button class="filter-btn" onclick="exportCSV('visitedCommunicated')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
           </div>
           <div class="chart-container"><canvas id="visitedCommunicatedChart"></canvas></div>
         </div>
@@ -317,7 +367,7 @@
           <div class="glass-panel chart-panel" style="margin-bottom: 0">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
               <span class="chart-title" style="margin:0">Message activity <span class="chart-hint">(Benchmark: 10 messages per sender)</span></span>
-              <button class="filter-btn" onclick="exportCSV('messageActivity')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('messageActivity')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <div class="chart-container"><canvas id="messageActivityChart"></canvas></div>
           </div>
@@ -335,7 +385,7 @@
           <div class="glass-panel chart-panel" style="margin-bottom: 0">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
               <span class="chart-title" style="margin:0">Voice activity</span>
-              <button class="filter-btn" onclick="exportCSV('voiceActivity')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('voiceActivity')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <div class="chart-container"><canvas id="voiceActivityChart"></canvas></div>
           </div>
@@ -351,7 +401,7 @@
         <div class="glass-panel chart-panel" style="margin-bottom: 2rem">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem">
             <span class="chart-title" style="margin:0">How many people muted my server?</span>
-            <button class="filter-btn" onclick="exportCSV('serverMuted')">Export CSV</button>
+            <button class="filter-btn" onclick="exportCSV('serverMuted')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
           </div>
           <div class="chart-container"><canvas id="serverMutedChart"></canvas></div>
         </div>
@@ -360,18 +410,18 @@
         <div class="section-label">Server Stats & Prune Options</div>
         <div class="overview-charts-row" style="margin-bottom: 2rem">
           <div class="glass-panel" style="padding:1.5rem">
-            <div class="mini-panel-title">📊 Server Snapshot</div>
+            <div class="mini-panel-title"><i data-lucide="bar-chart-2" class="mini-icon"></i> Server Snapshot</div>
             <div class="mini-list">
-              <div class="mini-item"><span class="mini-name">Total Members</span><span class="mini-value" id="snapshotMembers">—</span></div>
-              <div class="mini-item"><span class="mini-name">Server Age</span><span class="mini-value" id="snapshotAge">—</span></div>
-              <div class="mini-item"><span class="mini-name">Boosts</span><span class="mini-value" id="snapshotBoosts">—</span></div>
+              <div class="mini-item"><span class="mini-name">Total Members</span><span class="mini-value" id="snapshotMembers">--</span></div>
+              <div class="mini-item"><span class="mini-name">Server Age</span><span class="mini-value" id="snapshotAge">--</span></div>
+              <div class="mini-item"><span class="mini-name">Boosts</span><span class="mini-value" id="snapshotBoosts">--</span></div>
             </div>
           </div>
           <div class="glass-panel" style="padding:1.5rem">
-            <div class="mini-panel-title">🧹 Inactive Member Prune Estimation</div>
+            <div class="mini-panel-title"><i data-lucide="user-x" class="mini-icon"></i> Inactive Member Prune Estimation</div>
             <div class="mini-list">
-              <div class="mini-item"><span class="mini-name">Inactive for 7 days</span><span class="mini-value" id="prune7Count" style="color:var(--danger);font-weight:700">—</span></div>
-              <div class="mini-item"><span class="mini-name">Inactive for 30 days</span><span class="mini-value" id="prune30Count" style="color:var(--danger);font-weight:700">—</span></div>
+              <div class="mini-item"><span class="mini-name">Inactive for 7 days</span><span class="mini-value" id="prune7Count" style="color:var(--danger);font-weight:700">--</span></div>
+              <div class="mini-item"><span class="mini-name">Inactive for 30 days</span><span class="mini-value" id="prune30Count" style="color:var(--danger);font-weight:700">--</span></div>
             </div>
           </div>
         </div>
@@ -381,7 +431,7 @@
           <div class="glass-panel" style="padding:1.5rem">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="activity-item-title" style="margin:0; border-bottom:none; padding:0; font-size:1.1rem">Which text channels do people use the most?</span>
-              <button class="filter-btn" onclick="exportCSV('textChannelUsage')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('textChannelUsage')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Channel</th><th>Visitors</th><th>Communicators</th><th>Messages</th></tr></thead>
@@ -391,7 +441,7 @@
           <div class="glass-panel" style="padding:1.5rem">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="activity-item-title" style="margin:0; border-bottom:none; padding:0; font-size:1.1rem">Which voice channels do people use the most?</span>
-              <button class="filter-btn" onclick="exportCSV('voiceChannelUsage')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('voiceChannelUsage')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Channel</th><th>Speakers</th><th>Speaking Minutes</th></tr></thead>
@@ -406,29 +456,32 @@
         <div class="section-header">
           <div class="section-label-text">Member Demographics</div>
           <h2>Audience <em>Insights</em></h2>
-          <p class="section-sub">Get insights into where your members are from, what devices they use, and how long they've been in the server.</p>
+          <p class="section-sub">Get insights into peak activity hours, what devices members use, and server retention longevity.</p>
         </div>
 
         <div style="font-size:0.75rem; color:var(--ink-dim); margin-bottom: 2rem; line-height:1.4">
-          ℹ️ All data is based on members who visited the server in <b>the last 28 days.</b> Users who opted-out of analytics tracking will not show up in the data. To protect user privacy, unless a given group has more than 50 members, it will not be shown as a distinct result and may be grouped into "Other".
+          <i data-lucide="info" class="inline-icon-sm"></i> All data is based on members who visited the server in <b>the last 28 days.</b> Users who opted-out of analytics tracking will not show up in the data. To protect user privacy, unless a given group has more than 50 members, it will not be shown as a distinct result and may be grouped into "Other".
         </div>
 
         <!-- Demographics Grid -->
         <div class="overview-charts-row" style="margin-bottom: 2rem">
           <div class="glass-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
-              <span class="mini-panel-title" style="margin:0">Which countries are my members from?</span>
-              <button class="filter-btn" onclick="exportCSV('audienceCountries')">Export CSV</button>
+              <div>
+                <span class="mini-panel-title" style="margin:0">Peak Activity Hours</span>
+                <span class="label-hint" style="display:block;margin-top:2px">When members chat &amp; participate</span>
+              </div>
+              <button class="filter-btn" onclick="exportCSV('audiencePeakHours')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
-              <thead><tr><th>Country</th><th>Percentage</th></tr></thead>
-              <tbody id="audienceCountriesBody"><tr><td colspan="2" class="placeholder-text">Loading...</td></tr></tbody>
+              <thead><tr><th>Time Window</th><th>Share</th><th>Activity Level</th></tr></thead>
+              <tbody id="audiencePeakHoursBody"><tr><td colspan="3" class="placeholder-text">Loading...</td></tr></tbody>
             </table>
           </div>
           <div class="glass-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="mini-panel-title" style="margin:0">What devices do they use?</span>
-              <button class="filter-btn" onclick="exportCSV('audienceDevices')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('audienceDevices')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Device Type</th><th>Percentage</th></tr></thead>
@@ -441,7 +494,7 @@
           <div class="glass-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="mini-panel-title" style="margin:0">How long have they been a member of the server?</span>
-              <button class="filter-btn" onclick="exportCSV('audienceDuration')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('audienceDuration')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Member Since</th><th>Percentage</th></tr></thead>
@@ -451,7 +504,7 @@
           <div class="glass-panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.25rem">
               <span class="mini-panel-title" style="margin:0">Are my new members also new to Discord?</span>
-              <button class="filter-btn" onclick="exportCSV('audienceDiscordAge')">Export CSV</button>
+              <button class="filter-btn" onclick="exportCSV('audienceDiscordAge')"><i data-lucide="download" class="btn-icon-xs"></i> Export CSV</button>
             </div>
             <table class="lb-table">
               <thead><tr><th>Discord Account Age</th><th>Percentage</th></tr></thead>
@@ -487,7 +540,7 @@
       <section id="activity" class="view-section">
         <div class="section-header"><h2>Activity <em>Insights</em></h2></div>
 
-        <div class="section-label"><span class="status-dot"></span> Live Server Activity</div>
+        <div class="section-label">Live Server Activity</div>
         <div class="glass-panel" style="padding:1.25rem;margin-bottom:1.5rem">
           <div id="liveActivitiesBody" class="live-badges-container">
             <div class="placeholder-text">No active games at the moment.</div>
@@ -526,8 +579,10 @@
             </table>
           </div>
           <div class="glass-panel" style="padding:1.5rem;flex:1">
-            <div class="mini-panel-title">📊 Role Distribution</div>
-            <canvas id="roleChart"></canvas>
+            <div class="mini-panel-title"><i data-lucide="pie-chart" class="mini-icon"></i> Role Distribution</div>
+            <div class="chart-container" style="height:320px;min-height:300px">
+              <canvas id="roleChart"></canvas>
+            </div>
           </div>
         </div>
       </section>
@@ -603,7 +658,7 @@
                 <label>Footer Text (Optional)</label>
                 <input type="text" id="ebFooter" placeholder="Footer text">
               </div>
-              <button class="btn-save" style="margin-top:1rem" onclick="sendEmbed()">Send Embed Message ↗</button>
+              <button class="btn-save" style="margin-top:1rem" onclick="sendEmbed()"><i data-lucide="send" class="btn-icon"></i> Send Embed Message</button>
             </div>
           </div>
 
@@ -611,7 +666,7 @@
             <div class="section-label">Live Discord Preview</div>
             <div class="discord-preview-container">
               <div class="discord-message-header">
-                <div class="discord-avatar-placeholder" id="ebBotAvatar">🤖</div>
+                <div class="discord-avatar-placeholder" id="ebBotAvatar"><i data-lucide="bot" class="avatar-icon"></i></div>
                 <div class="discord-header-text">
                   <span class="discord-username" id="ebBotName">SC SmartTech</span>
                   <span class="discord-bot-badge">APP</span>
@@ -651,7 +706,7 @@
             </div>
             <div class="form-group">
               <label>Response <span style="opacity:.5">(what the bot replies)</span></label>
-              <textarea id="ccResponse" rows="5" placeholder="📜 Please read the rules in #rules!"></textarea>
+              <textarea id="ccResponse" rows="5" placeholder="Please read the rules in #rules!"></textarea>
             </div>
             <div class="form-group">
               <label>Description <span style="opacity:.5">(shown in help, optional)</span></label>
@@ -662,8 +717,8 @@
               <label style="margin:0">Send as Embed</label>
             </div>
             <div class="cc-btn-row">
-              <button class="btn-save" onclick="saveCustomCommand()">💾 Save Command</button>
-              <button class="btn-save btn-secondary" id="ccCancelBtn" onclick="cancelEditCommand()" style="display:none">✕ Cancel Edit</button>
+              <button class="btn-save" onclick="saveCustomCommand()"><i data-lucide="save" class="btn-icon"></i> Save Command</button>
+              <button class="btn-save btn-secondary" id="ccCancelBtn" onclick="cancelEditCommand()" style="display:none"><i data-lucide="x" class="btn-icon"></i> Cancel Edit</button>
             </div>
           </div>
 
@@ -672,6 +727,38 @@
             <div class="activity-item-title">Your Commands <span id="ccCount" style="opacity:.5">(0)</span></div>
             <div id="ccList" class="cc-list">
               <div class="cc-empty">No custom commands yet. Create one to get started!</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ═══ NICKNAME LOCK ═══ -->
+      <section id="nickname-lock" class="view-section">
+        <div class="section-header">
+          <h2>Nickname <em>Lock</em></h2>
+          <p class="section-sub">Lock specific users' nicknames so they can't change them. The bot will instantly revert any changes.</p>
+        </div>
+
+        <div class="nicklock-layout">
+          <!-- Add User Panel -->
+          <div class="glass-panel" style="padding:2rem">
+            <div class="activity-item-title">Lock a User</div>
+            <div class="form-group">
+              <label>User ID</label>
+              <input type="text" id="nlUserId" placeholder="e.g. 594504468931018752" maxlength="20">
+            </div>
+            <div class="form-group">
+              <label>Enforce Nickname <span style="opacity:.5">(leave blank to use their current nickname)</span></label>
+              <input type="text" id="nlNickname" placeholder="Optional (auto-detects current nickname)">
+            </div>
+            <button class="btn-save" onclick="addNicknameLock()" style="margin-top:1rem"><i data-lucide="lock" class="btn-icon"></i> Lock Nickname</button>
+          </div>
+
+          <!-- Locked Users List -->
+          <div class="glass-panel" style="padding:2rem">
+            <div class="activity-item-title">Locked Users <span id="nlCount" style="opacity:.5">(0)</span></div>
+            <div id="nlList" class="nl-list">
+              <div class="cc-empty">No users are nickname-locked yet.</div>
             </div>
           </div>
         </div>
@@ -686,7 +773,7 @@
             <div class="config-grid">
               <div class="form-group"><label>Prefix</label><input type="text" id="cfgPrefix" placeholder="sc"></div>
               <div class="form-group"><label>Embed Color</label><input type="text" id="cfgColor" placeholder="#0059ff"></div>
-              <button class="btn-save" onclick="saveConfig()">Save Configuration →</button>
+              <button class="btn-save" onclick="saveConfig()"><i data-lucide="save" class="btn-icon"></i> Save Configuration</button>
             </div>
           </div>
         </div>

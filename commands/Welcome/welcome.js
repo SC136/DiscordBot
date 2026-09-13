@@ -4,10 +4,11 @@ const { createCanvas, loadImage } = require('@napi-rs/canvas')
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('welcome')
-    .setDescription('welcome'),
+    .setDescription('Generate a sample welcome banner card image.')
+    .addUserOption(opt => opt.setName('user').setDescription('User to preview welcome card for (optional)').setRequired(false)),
   name: 'welcome',
   aliases: ['wel'],
-  description: 'welcome',
+  description: 'Generate a sample welcome banner card image.',
   run: async (client, message, args) => {
     const canvas = createCanvas(500, 227)
     const ctx = canvas.getContext('2d')

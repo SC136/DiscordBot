@@ -118,6 +118,36 @@ const inviteMapSchema = new mongoose.Schema({
 });
 const InviteMap = mongoose.model('InviteMap', inviteMapSchema);
 
+// User Command Stats Schema: Tracks bot commands executed per user
+const userCommandStatsSchema = new mongoose.Schema({
+  userId: { type: String, required: true },
+  guildId: { type: String, required: true },
+  commandCount: { type: Number, default: 0 },
+  lastUsedCommand: { type: String, default: '' },
+  lastUsedAt: { type: Date, default: Date.now },
+  commands: { type: Object, default: {} }
+});
+userCommandStatsSchema.index({ userId: 1, guildId: 1 }, { unique: true });
+const UserCommandStats = mongoose.model('UserCommandStats', userCommandStatsSchema);
+
+// Helper to track user command stats asynchronously
+async function trackUserCommand(userId, guildId, commandName) {
+  if (!process.env.MONGO_URI || !userId || !guildId) return;
+  try {
+    const safeCmd = (commandName || 'unknown').replace(/[\.\$]/g, '_');
+    await UserCommandStats.updateOne(
+      { userId, guildId },
+      {
+        $inc: { commandCount: 1, [`commands.${safeCmd}`]: 1 },
+        $set: { lastUsedCommand: commandName, lastUsedAt: new Date() }
+      },
+      { upsert: true }
+    );
+  } catch (err) {
+    console.error('Error tracking user command stats:', err.message);
+  }
+}
+
 // Transient in-memory map to track voice call sessions
 client.voiceSessions = new Map();
 
@@ -150,6 +180,14 @@ app.get('/api/stats', dashAuth, (req, res) => {
     const cpuLoad = parseFloat(os.loadavg()[0].toFixed(2));
     const ping = client.ws.ping;
 
+    const botUser = client.user;
+    const botInfo = {
+      botName: botUser ? (botUser.globalName || botUser.username) : 'SC SmartTech',
+      botTag: botUser ? botUser.tag : 'SC SmartTech',
+      botAvatar: botUser ? botUser.displayAvatarURL({ forceStatic: false, size: 256 }) : 'https://cdn.discordapp.com/embed/avatars/0.png',
+      botId: botUser ? botUser.id : ''
+    };
+
     const guild = client.guilds.cache.get(config.guild);
     if (!guild) return res.json({ 
       error: 'Guild not found', 
@@ -157,7 +195,8 @@ app.get('/api/stats', dashAuth, (req, res) => {
       onlineCount: 0, 
       channelCount: 0, 
       uptimeMs: client.uptime || 0,
-      health: { ramRSS, ramHeap, cpuLoad, ping }
+      health: { ramRSS, ramHeap, cpuLoad, ping },
+      ...botInfo
     });
 
     const onlineCount = guild.members.cache.filter(m => m.presence && m.presence.status !== 'offline').size;
@@ -174,7 +213,8 @@ app.get('/api/stats', dashAuth, (req, res) => {
         ramHeap,
         cpuLoad,
         ping
-      }
+      },
+      ...botInfo
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -782,6 +822,97 @@ app.delete('/api/custom-commands', dashAuth, (req, res) => {
   }
 });
 
+// ── NICKNAME LOCK API ──
+app.get('/api/nickname-lock', dashAuth, async (req, res) => {
+  try {
+    const fresh = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    const locked = fresh.nicknameLockedUsers || {};
+    const guild = client.guilds.cache.get(config.guild);
+    const entries = [];
+
+    for (const [userId, nick] of Object.entries(locked)) {
+      let username = 'Unknown User';
+      let avatar = null;
+      try {
+        const member = guild ? await guild.members.fetch(userId).catch(() => null) : null;
+        if (member) {
+          username = member.user.username;
+          avatar = member.user.displayAvatarURL({ size: 64 });
+        } else {
+          const user = await client.users.fetch(userId).catch(() => null);
+          if (user) {
+            username = user.username;
+            avatar = user.displayAvatarURL({ size: 64 });
+          }
+        }
+      } catch {}
+      entries.push({ userId, username, avatar, lockedNickname: nick });
+    }
+
+    res.json({ entries });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/nickname-lock', dashAuth, async (req, res) => {
+  try {
+    const { userId, nickname } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+
+    const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    if (!cfg.nicknameLockedUsers) cfg.nicknameLockedUsers = {};
+
+    const guild = client.guilds.cache.get(config.guild);
+    let enforcedNick = nickname;
+
+    // If no nickname given, use member's current nickname
+    if (!enforcedNick && guild) {
+      const member = await guild.members.fetch(userId).catch(() => null);
+      if (member) {
+        enforcedNick = member.nickname || member.user.displayName;
+      }
+    }
+    if (!enforcedNick) return res.status(400).json({ error: 'Could not determine nickname. Provide one manually.' });
+
+    cfg.nicknameLockedUsers[userId] = enforcedNick;
+    fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
+
+    if (config && config.nicknameLockedUsers) {
+      config.nicknameLockedUsers[userId] = enforcedNick;
+    }
+
+    // Immediately apply the new nickname to the member on Discord
+    if (guild) {
+      try {
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (member && member.manageable) {
+          await member.setNickname(enforcedNick, 'Nickname locked/updated via dashboard').catch(() => {});
+        }
+      } catch {}
+    }
+
+    res.json({ success: true, nickname: enforcedNick });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/nickname-lock', dashAuth, (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: 'userId required' });
+
+    const cfg = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    if (!cfg.nicknameLockedUsers) cfg.nicknameLockedUsers = {};
+    delete cfg.nicknameLockedUsers[userId];
+    fs.writeFileSync('./config.json', JSON.stringify(cfg, null, 2));
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/insights — Detailed Discord Server Insights (Growth, Engagement, Audience)
 app.get('/api/insights', dashAuth, async (req, res) => {
   try {
@@ -1043,6 +1174,57 @@ app.get('/api/insights', dashAuth, async (req, res) => {
       accountAgePct[k] = Math.round((accountAge[k] / totalRecent) * 100);
     }
 
+    // Peak Activity Hours (Hourly distribution from member joins + recent channel messages)
+    const hourlyCounts = Array(24).fill(0);
+    guild.members.cache.forEach(m => {
+      if (m.joinedTimestamp) {
+        const h = new Date(m.joinedTimestamp).getHours();
+        hourlyCounts[h] += 1;
+      }
+    });
+
+    try {
+      const textChans = guild.channels.cache
+        .filter(c => c.isTextBased && c.viewable && !c.isVoiceBased())
+        .first(6);
+      for (const ch of textChans) {
+        try {
+          const msgs = await ch.messages.fetch({ limit: 40 });
+          msgs.forEach(msg => {
+            if (!msg.author.bot) {
+              const h = msg.createdAt.getHours();
+              hourlyCounts[h] += 3;
+            }
+          });
+        } catch (_) {}
+      }
+    } catch (_) {}
+
+    const periods = {
+      'Evening (6 PM - 12 AM)': 0,
+      'Afternoon (12 PM - 6 PM)': 0,
+      'Morning (6 AM - 12 PM)': 0,
+      'Late Night (12 AM - 6 AM)': 0
+    };
+
+    for (let h = 0; h < 24; h++) {
+      const count = hourlyCounts[h];
+      if (h >= 18) periods['Evening (6 PM - 12 AM)'] += count;
+      else if (h >= 12) periods['Afternoon (12 PM - 6 PM)'] += count;
+      else if (h >= 6) periods['Morning (6 AM - 12 PM)'] += count;
+      else periods['Late Night (12 AM - 6 AM)'] += count;
+    }
+
+    const totalActivity = Object.values(periods).reduce((a, b) => a + b, 0) || 1;
+    const peakHoursData = Object.entries(periods).map(([window, count]) => {
+      const pct = Math.round((count / totalActivity) * 100);
+      let status = 'Moderate';
+      if (pct >= 35) status = 'Peak Activity';
+      else if (pct >= 25) status = 'High Activity';
+      else if (pct <= 12) status = 'Quiet Hours';
+      return { window, percentage: pct, status };
+    }).sort((a, b) => b.percentage - a.percentage);
+
     // 4. Top Chatters in the range
     const rawTopChatters = await MemberMessageStats.aggregate([
       { $match: { guildId: config.guild, date: { $gte: startDate, $lte: today } } },
@@ -1116,6 +1298,7 @@ app.get('/api/insights', dashAuth, async (req, res) => {
       textChannelUsage,
       voiceChannelUsage,
       audience: {
+        peakHours: peakHoursData,
         devices: devicePct,
         membershipDuration: membershipDurationPct,
         accountAge: accountAgePct
@@ -1544,6 +1727,7 @@ client.on('messageCreate', async message => {
   let command = client.commands.get(cmd);
   if (!command) command = client.commands.get(client.aliases.get(cmd));
   if (command) {
+    trackUserCommand(message.author.id, message.guild.id, command.name).catch(() => {});
     try {
       await command.run(client, message, args);
     } catch (err) {
@@ -1562,6 +1746,7 @@ client.on('messageCreate', async message => {
   const customCmds = config.customCommands || {};
   const customCmd = customCmds[cmd];
   if (customCmd) {
+    trackUserCommand(message.author.id, message.guild.id, cmd).catch(() => {});
     if (customCmd.embed) {
       const embed = new EmbedBuilder()
         .setDescription(customCmd.response)
@@ -1570,6 +1755,32 @@ client.on('messageCreate', async message => {
       return message.channel.send({ embeds: [embed] });
     }
     return message.channel.send(customCmd.response);
+  }
+});
+
+
+// Nickname Lock — revert nickname changes for locked users
+client.on('guildMemberUpdate', async (oldMember, newMember) => {
+  if (newMember.user.bot) return;
+  if (oldMember.nickname === newMember.nickname) return; // no nickname change
+
+  let lockedUsers = {};
+  try {
+    const freshConfig = JSON.parse(fs.readFileSync('./config.json', 'utf8'));
+    lockedUsers = freshConfig.nicknameLockedUsers || {};
+  } catch { return; }
+
+  const enforcedNick = lockedUsers[newMember.id];
+  if (!enforcedNick) return; // user is not locked
+
+  // If the new nickname doesn't match the enforced one, revert it
+  if (newMember.nickname !== enforcedNick) {
+    try {
+      await newMember.setNickname(enforcedNick, 'Nickname locked by bot');
+      console.log(`[NickLock] Reverted ${newMember.user.username}'s nickname back to "${enforcedNick}"`);
+    } catch (err) {
+      console.error(`[NickLock] Failed to revert nickname for ${newMember.user.username}:`, err.message);
+    }
   }
 });
 
@@ -2252,6 +2463,7 @@ client.on('interactionCreate', async interaction => {
           if (opt.value !== undefined) args.push(opt.value.toString());
         });
       }
+      trackUserCommand(interaction.user.id, interaction.guildId, interaction.commandName).catch(() => {});
       await command.run(client, ctx, args);
     } catch (error) {
       console.error(`[SlashCommand Error] /${interaction.commandName}:`, error);

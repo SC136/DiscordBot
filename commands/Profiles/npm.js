@@ -4,8 +4,8 @@ const { sendError } = require('../../utils/errorEmbed');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('npm')
-    .setDescription('No description provided')
-    .addStringOption(opt => opt.setName('package').setDescription('Package name').setRequired(true)),
+    .setDescription('View metadata and download statistics for any NPM package.')
+    .addStringOption(opt => opt.setName('package').setDescription('Package name (default: sc136)').setRequired(false)),
   name: 'npm',
   aliases: ['npmstats', 'npm-stats'],
   description: 'View metadata and download statistics for any NPM package.',

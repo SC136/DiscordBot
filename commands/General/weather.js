@@ -28,8 +28,8 @@ const WMO = {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('weather')
-    .setDescription('No description provided')
-    .addStringOption(opt => opt.setName('location').setDescription('City or Zip Code').setRequired(true)),
+    .setDescription('View current weather for a city or default location.')
+    .addStringOption(opt => opt.setName('location').setDescription('City name or Zip Code (optional)').setRequired(false)),
   name: 'weather',
   aliases: ['temp', 'forecast', 'wxtemp'],
   description: 'View current weather for a city or default location.',

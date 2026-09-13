@@ -4,8 +4,7 @@ const { sendError } = require('../../utils/errorEmbed');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('steam')
-    .setDescription('No description provided')
-    .addStringOption(opt => opt.setName('query').setDescription('Game name').setRequired(true)),
+    .setDescription('View Steam profile statistics and activity for SC.'),
   name: 'steam',
   aliases: ['steamstats', 'steamprofile'],
   description: 'View Steam profile statistics and activity for SC.',

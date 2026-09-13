@@ -7,10 +7,11 @@ const Levels = require('discord-xp');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('canvas')
-    .setDescription('canvas'),
+    .setDescription('Generate a custom canvas rank card image for a user.')
+    .addUserOption(opt => opt.setName('user').setDescription('User to generate canvas card for (optional)').setRequired(false)),
 	name: 'canvas',
 	aliases: ['can'],
-	description: 'canvas',
+	description: 'Generate a custom canvas rank card image for a user.',
 	run: async (client, message, args) => {
 		try {
 			if (!process.env.MONGO_URI) {

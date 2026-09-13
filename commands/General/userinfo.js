@@ -6,7 +6,7 @@ const e = require('../../utils/emojis');
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('userinfo')
-    .setDescription('No description provided')
+    .setDescription('View detailed information about a server member.')
     .addUserOption(opt => opt.setName('user').setDescription('User to get info for').setRequired(false)),
   name: 'userinfo',
   aliases: ['ui', 'whois', 'user'],
